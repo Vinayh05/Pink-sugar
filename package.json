@@ -1,0 +1,29 @@
+{
+  "name": "pink-salt-cafe",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "animejs": "^3.2.2",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.31.0",
+    "next": "14.2.23",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "sharp": "^0.35.3",
+    "tailwindcss": "^3.4.17"
+  }
+}
