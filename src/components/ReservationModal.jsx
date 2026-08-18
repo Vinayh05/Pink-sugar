@@ -28,7 +28,7 @@ export const ReservationModal = () => {
       origin: { y: 0.6 },
       colors: ['#E8998D', '#B85B43', '#18181A'],
     });
-    showToast(`Table reserved for ${name} at Pink Salt Cafe!`);
+    showToast(`Table reserved for ${name} at Pink Sugar Cafe!`);
   };
 
   const handleClose = () => {

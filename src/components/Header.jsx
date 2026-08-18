@@ -41,10 +41,9 @@ export const Header = () => {
   }, []);
 
   const navLinks = [
-    { label: 'Craft & Specialties', href: '/#specialties' },
-    { label: 'The Promise', href: '/#promise' },
-    { label: 'Full Menu', href: '/#menu' },
-    { label: 'Community', href: '/#promise' },
+    { label: 'Craft & Pillars', href: '/#specialties' },
+    { label: 'Our Story', href: '/about' },
+    { label: 'Artisanal Menu', href: '/menu' },
   ];
 
   return (
@@ -74,7 +73,7 @@ export const Header = () => {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-[#E8998D]/50 shadow-md group-hover:scale-105 group-hover:border-[#E8998D] transition-all duration-300 bg-[#18181A] shrink-0">
               <img
                 src="/images/pink_salt_logo.jpg"
-                alt="Pink Salt Cafe Logo"
+                alt="Pink Sugar Cafe Logo"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -86,7 +85,7 @@ export const Header = () => {
                   letterSpacing: '0.08em',
                 }}
               >
-                PINK SALT
+                PINK SUGAR
               </span>
               <span
                 className="text-[9px] font-mono tracking-widest uppercase mt-0.5"

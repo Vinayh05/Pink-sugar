@@ -59,7 +59,7 @@ function AdminLayoutInner({ children }) {
           <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E8998D]/50 bg-[#18181A] shrink-0">
             <img src="/images/pink_salt_logo.jpg" alt="Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="font-canela text-lg font-bold tracking-wider">PINK SALT</span>
+          <span className="font-canela text-lg font-bold tracking-wider">PINK SUGAR</span>
           <span className="badge-mono text-[9px] bg-[#E8998D]/20 text-[#E8998D] px-2 py-0.5 rounded">OWNER</span>
         </div>
 
@@ -85,14 +85,14 @@ function AdminLayoutInner({ children }) {
               <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-[#E8998D]/50 shadow-md bg-[#18181A] shrink-0">
                 <img
                   src="/images/pink_salt_logo.jpg"
-                  alt="Pink Salt Logo"
+                  alt="Pink Sugar Logo"
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <span className="font-canela text-xl font-bold tracking-wider leading-none">
-                    PINK SALT
+                    PINK SUGAR
                   </span>
                   <span className="font-mono text-[10px] bg-[#E8998D]/20 text-[#E8998D] px-1.5 py-0.5 rounded font-bold">
                     OWNER
@@ -187,7 +187,7 @@ function AdminLayoutInner({ children }) {
               <span className="h-px w-6 bg-[#B85B43]/40" />
             </div>
             <h1 className="font-canela text-2xl text-[#18181A] font-normal">
-              Pink Salt Cafe Operations
+              Pink Sugar Cafe Operations
             </h1>
           </div>
 

@@ -103,7 +103,7 @@ export default function AdminAnalyticsPage() {
             Executive Performance Overview
           </h2>
           <p className="font-subheading text-xs sm:text-sm text-[#6E6B68] font-light mt-1">
-            Real-time aggregate sales, customer velocity, and kitchen ticket metrics for Pink Salt Cafe.
+            Real-time aggregate sales, customer velocity, and kitchen ticket metrics for Pink Sugar Cafe.
           </p>
         </div>
 

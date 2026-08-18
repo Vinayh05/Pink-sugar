@@ -173,7 +173,7 @@ export const EditorialPreloader = ({ onLoaded }) => {
           </div>
 
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-wider text-[#FAF7F2]">
-            /PINK SALT
+            PINK SUGAR
           </h2>
           <span className="font-mono text-[10px] text-[#A3A19B] tracking-widest uppercase">
             Kusugal Road • Hubballi
@@ -184,7 +184,7 @@ export const EditorialPreloader = ({ onLoaded }) => {
         <div ref={counterRef} className="w-64 flex flex-col items-center">
           <div className="flex items-baseline justify-between w-full mb-2">
             <span className="font-mono text-xs text-[#A3A19B] tracking-wider uppercase">
-              Brewing Pink Salt Experience...
+              Brewing Pink Sugar Experience...
             </span>
             <span className="font-mono text-base font-bold text-[#E8998D]">
               {progress}%

@@ -42,7 +42,7 @@ export default function AdminCustomersPage() {
   const handleSendWhatsAppPromo = (cust) => {
     const phoneDigits = (cust.phone || '').replace(/[^0-9]/g, '');
     const promoText = encodeURIComponent(
-      `Namaste ${cust.name}! 🌸 Thank you for dining at Pink Salt Cafe, Kusugal Road Hubballi. As a special treat for your love of ${cust.favoriteCategory}, enjoy 15% off your next stone-hearth table with code PINKSALT15. Reserve online: http://localhost:3000/reserve`
+      `Namaste ${cust.name}! 🌸 Thank you for dining at Pink Sugar Cafe, Kusugal Road Hubballi. As a special treat for your love of ${cust.favoriteCategory}, enjoy 15% off your next stone-hearth table with code PINKSUGAR15. Reserve online: http://localhost:3000/reserve`
     );
     const waUrl = `https://wa.me/${phoneDigits}?text=${promoText}`;
     window.open(waUrl, '_blank');

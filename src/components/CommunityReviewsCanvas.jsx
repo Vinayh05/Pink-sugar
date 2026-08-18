@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import { Star, MapPin, Sparkles, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
+import { Star, MapPin, Sparkles, MessageSquarePlus, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -75,17 +75,55 @@ export const REVIEWS_DATA = [
 export const CommunityReviewsCanvas = () => {
   const containerRef = useRef(null);
   const cardsRef = useRef([]);
-  const mobileCardsRef = useRef([]);
+  const carouselRef = useRef(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [tappedId, setTappedId] = useState(null);
+  const [activeSlide, setActiveSlide] = useState(0);
   const { setIsReviewOpen } = useCart();
+
+  // Handle carousel scroll listener for mobile pagination dots
+  const handleCarouselScroll = () => {
+    if (!carouselRef.current) return;
+    const { scrollLeft, clientWidth } = carouselRef.current;
+    const cardWidth = clientWidth * 0.82;
+    const index = Math.round(scrollLeft / (cardWidth + 16));
+    setActiveSlide(Math.min(REVIEWS_DATA.length - 1, Math.max(0, index)));
+  };
+
+  const scrollToIndex = (index) => {
+    if (!carouselRef.current) return;
+    const cardElements = carouselRef.current.children;
+    if (cardElements[index]) {
+      cardElements[index].scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+      setActiveSlide(index);
+    }
+  };
+
+  // Orientation & resize listener
+  useEffect(() => {
+    const handleRefresh = () => {
+      ScrollTrigger.refresh();
+    };
+    window.addEventListener('resize', handleRefresh, { passive: true });
+    window.addEventListener('orientationchange', handleRefresh, { passive: true });
+    return () => {
+      window.removeEventListener('resize', handleRefresh);
+      window.removeEventListener('orientationchange', handleRefresh);
+    };
+  }, []);
 
   // GSAP matchMedia Floating Physics Animation
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
 
-      // Desktop Floating Physics (min-width: 1024px)
+      // ==========================================
+      // 1. DESKTOP FLOATING CANVAS (min-width: 1024px)
+      // ==========================================
       mm.add('(min-width: 1024px)', () => {
         const cards = cardsRef.current.filter(Boolean);
 
@@ -124,26 +162,27 @@ export const CommunityReviewsCanvas = () => {
         });
       });
 
-      // Mobile & Tablet Stagger Entrance (max-width: 1023px)
+      // ==========================================
+      // 2. MOBILE & TABLET STAGGER (max-width: 1023px)
+      // ==========================================
       mm.add('(max-width: 1023px)', () => {
-        const mobileCards = mobileCardsRef.current.filter(Boolean);
-
-        gsap.fromTo(
-          mobileCards,
-          { opacity: 0, y: 25 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.7,
-            stagger: 0.1,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: containerRef.current,
-              start: 'top 75%',
-              toggleActions: 'play none none none',
-            },
-          }
-        );
+        if (carouselRef.current) {
+          gsap.fromTo(
+            carouselRef.current,
+            { opacity: 0, y: 25 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.8,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: containerRef.current,
+                start: 'top 80%',
+                toggleActions: 'play none none none',
+              },
+            }
+          );
+        }
       });
 
       return () => mm.revert();
@@ -155,11 +194,11 @@ export const CommunityReviewsCanvas = () => {
     <section
       id="community"
       ref={containerRef}
-      className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 bg-[#FAF7F2] relative overflow-hidden border-t border-[#EFECE6]"
+      className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 bg-[#FAF7F2] relative overflow-x-hidden border-t border-[#EFECE6]"
     >
       {/* Background Decorative Ambient Watermark */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#18181A]/[0.025] font-canela text-[20vw] font-bold select-none pointer-events-none whitespace-nowrap">
-        PINK SALT
+        PINK SUGAR
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
@@ -200,7 +239,9 @@ export const CommunityReviewsCanvas = () => {
           </div>
         </div>
 
-        {/* Desktop Shopify-Editions Style Scattered Floating-Card Canvas (hidden on mobile/tablet) */}
+        {/* ========================================================= */}
+        {/* DESKTOP PIPELINE: Scattered Floating-Card Canvas */}
+        {/* ========================================================= */}
         <div className="hidden lg:block relative w-full h-[680px] lg:h-[750px] rounded-3xl bg-transparent">
           {REVIEWS_DATA.map((review, idx) => {
             const isHovered = hoveredId === review.id;
@@ -264,48 +305,85 @@ export const CommunityReviewsCanvas = () => {
           })}
         </div>
 
-        {/* Mobile & Tablet View: Structured Touch-Optimized Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
-          {REVIEWS_DATA.map((review, idx) => {
-            const isTapped = tappedId === review.id;
+        {/* ========================================================= */}
+        {/* MOBILE & TABLET PIPELINE: Touch Snap Carousel */}
+        {/* ========================================================= */}
+        <div className="block lg:hidden w-full">
+          {/* Horizontal Snap Scroll Track */}
+          <div
+            ref={carouselRef}
+            onScroll={handleCarouselScroll}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-2 sm:px-4 pb-6 pt-2 no-scrollbar scroll-smooth"
+            style={{
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {REVIEWS_DATA.map((review, idx) => {
+              const isTapped = tappedId === review.id;
+              const isActive = activeSlide === idx;
 
-            return (
-              <div
-                key={review.id}
-                ref={(el) => (mobileCardsRef.current[idx] = el)}
-                onClick={() => setTappedId(isTapped ? null : review.id)}
-                className={`p-5 rounded-2xl bg-white border transition-all duration-200 shadow-xs flex flex-col justify-between cursor-pointer ${
-                  isTapped
-                    ? 'border-[#B85B43] ring-2 ring-[#E8998D]/40 bg-white'
-                    : 'border-[#EFECE6] hover:border-[#E8998D]'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-canela text-base text-[#18181A] font-normal">
-                      {review.author}
-                    </h3>
-                    <div className="flex items-center gap-0.5 text-[#E8998D]">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star key={i} size={11} fill="#E8998D" />
-                      ))}
+              return (
+                <div
+                  key={review.id}
+                  onClick={() => setTappedId(isTapped ? null : review.id)}
+                  className={`w-[82vw] sm:w-[340px] max-w-sm shrink-0 snap-center p-6 rounded-2xl bg-white/95 backdrop-blur-md border transition-all duration-300 shadow-md flex flex-col justify-between cursor-pointer ${
+                    isTapped
+                      ? 'border-[#B85B43] ring-2 ring-[#E8998D]/40 shadow-xl scale-[1.02]'
+                      : isActive
+                      ? 'border-[#E8998D]/60 shadow-lg'
+                      : 'border-[#18181A]/10'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-canela text-base sm:text-lg text-[#18181A] font-normal leading-snug">
+                        {review.author}
+                      </h3>
+                      <div className="flex items-center gap-0.5 text-[#E8998D]">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <Star key={i} size={12} fill="#E8998D" />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <span className="font-mono text-[10px] text-[#6E6B68] block mb-2">
-                    {review.tag}
-                  </span>
-                  <p className="font-subheading text-xs text-[#18181A]/90 italic leading-relaxed mb-3 font-light">
-                    "{review.text}"
-                  </p>
-                </div>
 
-                <div className="pt-2.5 border-t border-[#EFECE6] flex items-center justify-between text-[10px] font-mono">
-                  <span className="badge-mono badge-rose text-[9px] px-2 py-0.5">{review.dish}</span>
-                  <span className="text-[#6E6B68]">{review.date}</span>
+                    <span className="font-mono text-[10px] text-[#6E6B68] block mb-3">
+                      {review.tag}
+                    </span>
+
+                    <p className="font-subheading text-xs sm:text-sm text-[#18181A]/90 italic leading-relaxed mb-4 font-light">
+                      "{review.text}"
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#EFECE6] flex items-center justify-between text-[10px] font-mono">
+                    <span className="badge-mono badge-rose text-[9px] px-2.5 py-1">
+                      <Sparkles size={10} /> {review.dish}
+                    </span>
+                    <span className="text-[#6E6B68]">{review.date}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Swipeable Pagination Dots */}
+          <div className="flex justify-center items-center gap-2 mt-4">
+            {REVIEWS_DATA.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => scrollToIndex(idx)}
+                aria-label={`Go to review ${idx + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeSlide === idx
+                    ? 'w-7 bg-[#B85B43]'
+                    : 'w-2 bg-[#18181A]/20 hover:bg-[#18181A]/40'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>

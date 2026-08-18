@@ -7,10 +7,9 @@ import { StoreProvider } from '../src/context/StoreContext';
 import { CartProvider } from '../src/context/CartContext';
 import { Header } from '../src/components/Header';
 import { HeroScrub } from '../src/components/HeroScrub';
-import { ScrollZoomStrip } from '../src/components/ScrollZoomStrip';
-import { PinkSaltPromise } from '../src/components/PinkSaltPromise';
+import { EditorialMagneticSplit } from '../src/components/EditorialMagneticSplit';
 import { CommunityReviewsCanvas } from '../src/components/CommunityReviewsCanvas';
-import { MenuSection } from '../src/components/MenuSection';
+import { MenuTeaser } from '../src/components/MenuTeaser';
 import { Footer } from '../src/components/Footer';
 import { CartDrawer } from '../src/components/CartDrawer';
 import { ReservationModal } from '../src/components/ReservationModal';
@@ -34,27 +33,24 @@ export default function HomePage() {
   return (
     <StoreProvider>
       <CartProvider>
-        {/* Main Single Page Web App - Immediate Zero-Lag First Paint */}
+        {/* Main Single Page Web App */}
         <main className="min-h-screen bg-[#FAF7F2] text-[#18181A] relative font-sans">
           {/* Navigation Bar */}
           <Header />
 
-          {/* Section 1: Hero Canvas Scrub Engine (rAF + 64 Frames) */}
+          {/* Section 1: Hero Video Scrub Canvas (#18181A) */}
           <HeroScrub />
 
-          {/* Section 2: 3-Column Scroll-Driven Zoom Strip */}
-          <ScrollZoomStrip />
+          {/* Section 2: Craft & Specialties (Magnetic Split Reveal) (#18181A) */}
+          <EditorialMagneticSplit />
 
-          {/* Section 3: The Pink Salt Promise & Linocut Hearth Dual Split */}
-          <PinkSaltPromise />
-
-          {/* Section 4: Community Reviews Canvas (Shopify-Editions Style Scattered Floating Cards) */}
+          {/* Section 3: Floating Google Community Reviews (#FAF7F2) */}
           <CommunityReviewsCanvas />
 
-          {/* Section 5: Complete Interactive Menu & Repertoire */}
-          <MenuSection />
+          {/* Section 4: Curated Menu Teaser & Fly-to-Cart (#FAF7F2) */}
+          <MenuTeaser />
 
-          {/* Footer */}
+          {/* Section 5: Modern Luxury Editorial Footer (#18181A) */}
           <Footer />
 
           {/* Modals & Overlays */}

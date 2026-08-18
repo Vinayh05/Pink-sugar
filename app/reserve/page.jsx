@@ -147,7 +147,7 @@ export default function ReservationPage() {
               </h1>
 
               <p className="font-subheading text-sm text-[#6E6B68] max-w-md mx-auto mb-8 font-light leading-relaxed">
-                Your reservation at Pink Salt Cafe is officially confirmed. A confirmation SMS & email have been dispatched.
+                Your reservation at Pink Sugar Cafe is officially confirmed. A confirmation SMS & email have been dispatched.
               </p>
 
               {/* Confirmation Slip */}
@@ -177,7 +177,7 @@ export default function ReservationPage() {
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
-                  href="/#menu"
+                  href="/menu"
                   className="btn-primary w-full sm:w-auto"
                 >
                   <Utensils size={15} />
@@ -205,7 +205,7 @@ export default function ReservationPage() {
                     <span className="h-px w-8 bg-[#E8998D]/40" />
                   </div>
                   <h1 className="font-canela text-3xl sm:text-5xl font-normal tracking-tight mb-2">
-                    Reserve Your Pink Salt Experience
+                    Reserve Your Pink Sugar Experience
                   </h1>
                   <p className="font-subheading text-xs sm:text-sm text-[#FAF7F2]/75 max-w-xl font-light leading-relaxed">
                     Kusugal Road, Hubballi • Select your preferred dining zone, date, and bespoke artisanal requirements.

@@ -39,11 +39,11 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: 'Pink Salt Cafe | Artisanal Roasts, Stone Hearth & Culinary Craft • Hubballi',
+  title: 'Pink Sugar Cafe | Artisanal Roasts, Stone Hearth & Culinary Craft • Hubballi',
   description:
-    'Pink Salt Cafe located at Kusugal Road, Hubballi. Luxury artisanal culinary craft, single-origin roasts, 36h wild fermented hearth pizzas, handcrafted pastas, and mineral cold brews.',
+    'Pink Sugar Cafe located at Kusugal Road, Hubballi. Luxury artisanal culinary craft, single-origin roasts, 36h wild fermented hearth pizzas, handcrafted pastas, and signature cold brews.',
   keywords: [
-    'Pink Salt Cafe',
+    'Pink Sugar Cafe',
     'Hubballi Cafe',
     'Kusugal Road',
     'Artisanal Coffee',
