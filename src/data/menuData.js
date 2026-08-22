@@ -121,12 +121,12 @@ export const MENU_DATA = [
 
   // 4. Specialty Roasts & Mineral Cold Brews
   {
-    id: "pink-salt-cold-brew",
-    name: "Pink Salt Velvet Cold Brew",
+    id: "pink-sugar-cold-brew",
+    name: "Pink Sugar Velvet Cold Brew",
     category: "Brews",
     price: 220,
     tags: ["18h Steeped", "Signature"],
-    desc: "18-hour cold brew layered with sweet Himalayan pink salt cream foam.",
+    desc: "18-hour cold brew layered with sweet Himalayan pink sugar cream foam.",
     imageUrl: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1000&q=80",
     prepTime: "Cold Poured",
     calories: "140 kcal",
@@ -222,8 +222,8 @@ export const REVIEWS_DATA = [
     role: "Culinary Enthusiast",
     rating: 5,
     date: "2 days ago",
-    comment: "The Pink Salt Velvet Cold Brew is unlike anything in Hubballi! The silky Himalayan salt foam balance with the 18h brew is pure magic. Sourdough pizza crust has authentic blistered leopard spotting.",
-    item: "Pink Salt Velvet Cold Brew",
+    comment: "The Pink Sugar Velvet Cold Brew is unlike anything in Hubballi! The silky Himalayan sweet foam balance with the 18h brew is pure magic. Sourdough pizza crust has authentic blistered leopard spotting.",
+    item: "Pink Sugar Velvet Cold Brew",
   },
   {
     id: "rev-2",

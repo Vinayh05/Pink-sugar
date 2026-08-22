@@ -16,6 +16,11 @@
   --font-subheading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spring Physics & Motion Easing Tokens */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 /* Zero Blank Screen Immediate Base & Viewport Lock */
@@ -45,6 +50,12 @@ body {
 body.loaded {
   background-color: var(--warm-alabaster);
   color: var(--charcoal-slate);
+}
+
+/* Tactile Selection Color */
+::selection {
+  background-color: rgba(232, 153, 141, 0.35);
+  color: #FAF7F2;
 }
 
 /* Custom Scrollbar */
@@ -99,7 +110,7 @@ body.loaded {
   min-height: 28px;
 }
 
-/* Primary & Secondary Buttons - Mobile Touch-Optimized */
+/* Primary & Secondary Buttons - Mobile Touch-Optimized with Spring Easing */
 .btn-primary {
   background-color: var(--terracotta-rust);
   color: #FFFFFF;
@@ -113,7 +124,7 @@ body.loaded {
   border-radius: 9999px;
   border: 1px solid var(--terracotta-rust);
   box-shadow: 0 4px 16px rgba(184, 91, 67, 0.25);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s var(--ease-spring);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -125,8 +136,12 @@ body.loaded {
 .btn-primary:hover {
   background-color: var(--terracotta-hover);
   border-color: var(--terracotta-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow: 0 8px 24px rgba(184, 91, 67, 0.35);
+}
+
+.btn-primary:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-secondary {
@@ -141,7 +156,7 @@ body.loaded {
   min-height: 48px;
   border-radius: 9999px;
   border: 1px solid var(--soft-oat-gray);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s var(--ease-spring);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -153,7 +168,11 @@ body.loaded {
 .btn-secondary:hover {
   border-color: var(--terracotta-rust);
   color: var(--terracotta-rust);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.btn-secondary:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* Card Styling: Warm Alabaster Card with Soft Oat Gray Border */
@@ -161,13 +180,13 @@ body.loaded {
   background-color: #FFFFFF;
   border: 1px solid var(--soft-oat-gray);
   border-radius: 1.25rem;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s var(--ease-spring), box-shadow 0.4s var(--ease-spring), border-color 0.4s var(--ease-spring);
 }
 
 .card-editorial:hover {
   border-color: rgba(232, 153, 141, 0.6);
-  box-shadow: 0 16px 36px rgba(24, 24, 26, 0.06), 0 0 20px rgba(232, 153, 141, 0.12);
-  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -10px rgba(24, 24, 26, 0.08), 0 0 20px rgba(232, 153, 141, 0.12);
+  transform: translateY(-4px);
 }
 
 /* Dark Card for Hearth / Night Craft */
@@ -176,13 +195,13 @@ body.loaded {
   border: 1px solid #3A3A40;
   border-radius: 1.25rem;
   color: var(--warm-alabaster);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s var(--ease-spring), box-shadow 0.4s var(--ease-spring), border-color 0.4s var(--ease-spring);
 }
 
 .card-dark:hover {
   border-color: var(--himalayan-rose);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(232, 153, 141, 0.18);
-  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 25px rgba(232, 153, 141, 0.2);
+  transform: translateY(-4px);
 }
 
 /* Text Colors */
@@ -224,4 +243,45 @@ body.loaded {
   background-size: 24px 24px;
   pointer-events: none;
   z-index: 1;
+}
+
+/* ========================================================= */
+/* Mobile & Tablet Continuous Review Marquee Keyframes       */
+/* ========================================================= */
+@keyframes reviewMarqueeScroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.review-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: reviewMarqueeScroll 38s linear infinite;
+  will-change: transform;
+}
+
+.review-marquee-track:hover,
+.review-marquee-track:active {
+  animation-play-state: paused;
+}
+
+/* Accessibility: Reduced-Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .review-marquee-track {
+    animation: none !important;
+    overflow-x: auto;
+  }
 }

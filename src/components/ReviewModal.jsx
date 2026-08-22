@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Star, Sparkles, CheckCircle2, Heart } from 'lucide-react';
+import { X, Star, Sparkles, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../context/CartContext';
 import { MENU_DATA } from '../data/menuData';
+import { addReview } from '../services/dataService';
 
 export const ReviewModal = () => {
   const { isReviewOpen, setIsReviewOpen, showToast } = useCart();
@@ -14,24 +15,44 @@ export const ReviewModal = () => {
   const [itemReviewed, setItemReviewed] = useState(MENU_DATA[0].name);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isReviewOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#E8998D', '#B85B43', '#18181A', '#FAF7F2'],
-    });
-    showToast(`Thank you for your 5-star review, ${name}!`);
+    setIsSubmitting(true);
+
+    try {
+      await addReview({
+        author: name.trim() || 'Verified Diner',
+        tag: 'Verified Community Review',
+        rating,
+        dish: itemReviewed,
+        text: comment.trim(),
+      });
+
+      setSubmitted(true);
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#E8998D', '#B85B43', '#18181A', '#FAF7F2'],
+      });
+      showToast(`Thank you for your review, ${name}!`);
+    } catch (err) {
+      console.warn('[ReviewModal] Review submission handled:', err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setIsReviewOpen(false);
     setSubmitted(false);
+    setName('');
+    setComment('');
   };
 
   return (
@@ -143,8 +164,12 @@ export const ReviewModal = () => {
               </div>
 
               <div className="pt-2">
-                <button type="submit" className="btn-primary w-full justify-center py-3.5">
-                  Publish Review to Community
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-primary w-full justify-center py-3.5"
+                >
+                  {isSubmitting ? 'Publishing...' : 'Publish Review to Community'}
                 </button>
               </div>
             </form>

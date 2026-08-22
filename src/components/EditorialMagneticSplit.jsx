@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import { Sparkles, Flame, ArrowUpRight, ChevronDown, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Sparkles } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -37,7 +37,7 @@ export const CRAFT_PILLARS = [
     id: '04',
     title: 'Single-Origin Specialty Roasts',
     subtitle: '18-Hour Cold Extraction',
-    desc: 'Precision-extracted coffee beans paired with house-whipped pink salt sweet cream for a rich, smooth, and balanced finish.',
+    desc: 'Precision-extracted coffee beans paired with house-whipped pink sugar sweet cream for a rich, smooth, and balanced finish.',
     badge: 'Kyoto Cold Drip',
     imageUrl: 'https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=1400&q=80',
   },
@@ -45,8 +45,6 @@ export const CRAFT_PILLARS = [
 
 export const EditorialMagneticSplit = () => {
   const containerRef = useRef(null);
-  const leftListRef = useRef(null);
-  const rightFrameRef = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [mobileExpandedIdx, setMobileExpandedIdx] = useState(0);
 
@@ -56,54 +54,13 @@ export const EditorialMagneticSplit = () => {
       const img = new Image();
       img.src = pillar.imageUrl;
     });
-
-    const handleRefresh = () => {
-      ScrollTrigger.refresh();
-    };
-    window.addEventListener('resize', handleRefresh, { passive: true });
-    window.addEventListener('orientationchange', handleRefresh, { passive: true });
-    return () => {
-      window.removeEventListener('resize', handleRefresh);
-      window.removeEventListener('orientationchange', handleRefresh);
-    };
   }, []);
-
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-
-      // ==========================================
-      // 1. DESKTOP PINNED MAGNETIC SCROLL (min-width: 1024px)
-      // ==========================================
-      mm.add('(min-width: 1024px)', () => {
-        ScrollTrigger.create({
-          trigger: containerRef.current,
-          start: 'top top',
-          end: '+=200%',
-          pin: true,
-          scrub: 0.5,
-          anticipatePin: 1,
-          onUpdate: (self) => {
-            const progress = self.progress;
-            const targetIdx = Math.min(
-              CRAFT_PILLARS.length - 1,
-              Math.floor(progress * CRAFT_PILLARS.length)
-            );
-            setActiveIdx(targetIdx);
-          },
-        });
-      });
-
-      return () => mm.revert();
-    },
-    { scope: containerRef }
-  );
 
   return (
     <section
       id="specialties"
       ref={containerRef}
-      className="relative w-full bg-[#18181A] text-[#FAF7F2] overflow-x-hidden"
+      className="relative w-full bg-[#18181A] text-[#FAF7F2] overflow-x-hidden py-16 sm:py-24"
     >
       {/* Anchor targets for navigation */}
       <div id="craft" className="absolute -top-24" />
@@ -113,27 +70,26 @@ export const EditorialMagneticSplit = () => {
       <div className="absolute top-1/3 -left-32 w-80 h-80 rounded-full bg-[#B85B43]/15 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-80 h-80 rounded-full bg-[#E8998D]/15 blur-3xl pointer-events-none" />
 
-      {/* ========================================================= */}
-      {/* DESKTOP VIEWPORT: Magnetic 50/50 Split Screen Layout      */}
-      {/* ========================================================= */}
-      <div className="hidden lg:flex h-screen min-h-[100dvh] w-full max-w-7xl mx-auto px-8 py-12 flex-col justify-between relative z-10">
-        {/* Section Top Eyebrow Header */}
-        <div className="pt-4">
-          <div className="inline-flex items-center gap-2 mb-1.5">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Section Top Header (Common for all screen sizes) */}
+        <div className="mb-10 sm:mb-14 text-center lg:text-left">
+          <div className="inline-flex items-center gap-2 mb-2">
             <span className="font-mono text-xs tracking-widest text-[#E8998D] uppercase font-bold">
               /OUR CRAFT & SPECIALTIES
             </span>
             <span className="h-px w-8 bg-[#E8998D]/40" />
           </div>
-          <h2 className="font-canela text-4xl lg:text-5xl font-normal text-[#FAF7F2] tracking-tight">
+          <h2 className="font-canela text-3xl sm:text-4xl lg:text-5xl font-normal text-[#FAF7F2] tracking-tight">
             The Four Pillars of Our Hearth
           </h2>
         </div>
 
-        {/* 50/50 Split Interactive Grid */}
-        <div className="grid grid-cols-12 gap-10 items-center my-auto w-full">
+        {/* ========================================================= */}
+        {/* DESKTOP VIEWPORT: Magnetic 50/50 Split Screen Layout      */}
+        {/* ========================================================= */}
+        <div className="hidden lg:grid grid-cols-12 gap-10 items-center">
           {/* Left Column: Interactive Magnetic Typography List (6 Cols) */}
-          <div ref={leftListRef} className="col-span-6 space-y-5">
+          <div className="col-span-6 space-y-4">
             {CRAFT_PILLARS.map((pillar, idx) => {
               const isActive = activeIdx === idx;
 
@@ -141,7 +97,8 @@ export const EditorialMagneticSplit = () => {
                 <div
                   key={pillar.id}
                   onMouseEnter={() => setActiveIdx(idx)}
-                  className={`group p-5 rounded-2xl transition-all duration-500 cursor-pointer border ${
+                  onClick={() => setActiveIdx(idx)}
+                  className={`group p-5 rounded-2xl transition-all duration-300 cursor-pointer border ${
                     isActive
                       ? 'bg-[#222226] border-l-4 border-l-[#E8998D] border-t-white/10 border-r-white/10 border-b-white/10 shadow-xl opacity-100 translate-x-2'
                       : 'bg-transparent border-transparent opacity-40 hover:opacity-80'
@@ -187,17 +144,14 @@ export const EditorialMagneticSplit = () => {
           </div>
 
           {/* Right Column: Dynamic Viewport Image Frame (6 Cols) */}
-          <div
-            ref={rightFrameRef}
-            className="col-span-6 h-[460px] lg:h-[500px] w-full rounded-3xl overflow-hidden relative border border-white/15 shadow-2xl bg-[#222226]"
-          >
+          <div className="col-span-6 h-[460px] lg:h-[500px] w-full rounded-3xl overflow-hidden relative border border-white/15 shadow-2xl bg-[#222226]">
             {CRAFT_PILLARS.map((pillar, idx) => {
               const isActive = activeIdx === idx;
 
               return (
                 <div
                   key={pillar.id}
-                  className={`absolute inset-0 w-full h-full transition-all duration-700 ease-out will-change-transform ${
+                  className={`absolute inset-0 w-full h-full transition-all duration-500 ease-out will-change-transform ${
                     isActive
                       ? 'opacity-100 scale-100 pointer-events-auto z-10'
                       : 'opacity-0 scale-105 pointer-events-none z-0'
@@ -212,7 +166,7 @@ export const EditorialMagneticSplit = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#18181A]/90 via-[#18181A]/20 to-transparent" />
 
                   {/* Floating Frame Metadata Pill */}
-                  <div className="absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between bg-[#18181A]/80 backdrop-blur-xl border border-white/15 p-4 rounded-2xl shadow-xl">
+                  <div className="absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between bg-[#18181A]/85 backdrop-blur-xl border border-white/15 p-4 rounded-2xl shadow-xl">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="salt-pulse-dot" />
@@ -226,7 +180,7 @@ export const EditorialMagneticSplit = () => {
                     </div>
 
                     <a
-                      href="#menu"
+                      href="/menu"
                       className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#E8998D] hover:text-[#18181A] text-[#FAF7F2] flex items-center justify-center transition-all duration-300 shrink-0 shadow-md"
                       title="Explore in Menu"
                     >
@@ -239,36 +193,10 @@ export const EditorialMagneticSplit = () => {
           </div>
         </div>
 
-        {/* Desktop Bottom Scroll Cue */}
-        <div className="text-center pb-2 pointer-events-none">
-          <span className="font-mono text-[10px] tracking-widest text-[#FAF7F2]/40 uppercase">
-            ↓ Scroll or hover pillars to discover hearth techniques
-          </span>
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* MOBILE & TABLET VIEWPORT: Interactive Accordion Sequence  */}
-      {/* ========================================================= */}
-      <div className="flex lg:hidden flex-col py-16 px-4 sm:px-6 max-w-lg mx-auto w-full relative z-10 space-y-6">
-        {/* Mobile Section Header */}
-        <div className="text-center">
-          <div className="inline-flex items-center gap-1.5 mb-1.5">
-            <span className="font-mono text-[10px] tracking-widest text-[#E8998D] uppercase font-bold">
-              /OUR CRAFT & SPECIALTIES
-            </span>
-            <span className="h-px w-6 bg-[#E8998D]/40" />
-          </div>
-          <h2 className="font-canela text-3xl font-normal text-[#FAF7F2] tracking-tight">
-            The Four Pillars
-          </h2>
-          <p className="font-subheading text-xs text-[#FAF7F2]/70 mt-1 font-light">
-            Tap each pillar to inspect our stone-hearth gastronomy
-          </p>
-        </div>
-
-        {/* Mobile Accordion Card Stack */}
-        <div className="space-y-4 w-full">
+        {/* ========================================================= */}
+        {/* MOBILE & TABLET VIEWPORT: Interactive Accordion Sequence  */}
+        {/* ========================================================= */}
+        <div className="flex lg:hidden flex-col max-w-lg mx-auto w-full space-y-4">
           {CRAFT_PILLARS.map((pillar, idx) => {
             const isExpanded = mobileExpandedIdx === idx;
 

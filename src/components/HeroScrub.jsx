@@ -5,7 +5,7 @@ import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import { Sparkles, ArrowDown, Flame } from 'lucide-react';
+import { Sparkles, ArrowDown } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -22,7 +22,6 @@ export const HeroScrub = () => {
   const imagesRef = useRef([]);
   const headlineRef = useRef(null);
   const badgeRef = useRef(null);
-  const discoveryCardRef = useRef(null);
   const activeFrameRef = useRef(-1);
 
   const { setIsReservationOpen } = useCart();
@@ -133,20 +132,66 @@ export const HeroScrub = () => {
     };
   }, [resizeCanvas, renderFrame]);
 
-  // GSAP ScrollTrigger.matchMedia() for Device-Adaptive Performance
+  // GSAP Kinetic Entrance + ScrollTrigger Scrub Timelines
   useGSAP(
     () => {
       const playhead = playheadRef.current;
       const canvas = canvasRef.current;
+
+      // ========================================================
+      // 1. KINETIC ENTRANCE: Staggered Split-Word Physics (Mount)
+      // ========================================================
+      gsap.fromTo(
+        badgeRef.current,
+        { y: -20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', delay: 0.1 }
+      );
+
+      gsap.fromTo(
+        '.hero-split-word',
+        { y: 30, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.04,
+          ease: 'power3.out',
+          delay: 0.2,
+        }
+      );
+
+      gsap.fromTo(
+        '.hero-sub-text',
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, ease: 'power2.out', delay: 0.45 }
+      );
+
+      gsap.fromTo(
+        '.hero-cta-btn',
+        { y: 15, opacity: 0, scale: 0.94 },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.7,
+          stagger: 0.08,
+          ease: 'back.out(1.5)',
+          delay: 0.6,
+        }
+      );
+
+      // ========================================================
+      // 2. SCROLL TRIGGER CANVAS SCRUB (Desktop & Mobile Pipelines)
+      // ========================================================
       const mm = gsap.matchMedia();
 
-      // 1. Desktop & Ultrawide Screens (min-width: 1024px)
+      // Desktop & Ultrawide Screens (min-width: 1024px)
       mm.add('(min-width: 1024px)', () => {
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: containerRef.current,
             start: 'top top',
-            end: '+=200%',
+            end: '+=150%',
             pin: true,
             scrub: 0.5,
             anticipatePin: 1,
@@ -165,13 +210,13 @@ export const HeroScrub = () => {
           0
         );
 
-        // 25% to 75% Scroll: Scrub through 64 frames
+        // 25% to 100% Scroll: Smoothly scrub through 64 frames
         tl.to(
           playhead,
           {
             frame: TOTAL_FRAMES - 1,
             ease: 'none',
-            duration: 0.5,
+            duration: 0.75,
             onUpdate: () => {
               const target = Math.round(playhead.frame);
               if (target !== activeFrameRef.current && imagesRef.current[target]) {
@@ -184,33 +229,15 @@ export const HeroScrub = () => {
           },
           0.25
         );
-
-        // 75% to 100% Scroll: Extraction discovery card lifts in
-        tl.fromTo(
-          discoveryCardRef.current,
-          {
-            opacity: 0,
-            y: 40,
-            scale: 0.94,
-          },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            ease: 'power3.out',
-            duration: 0.25,
-          },
-          0.75
-        );
       });
 
-      // 2. Tablet & Mobile Screens (max-width: 1023px)
+      // Tablet & Mobile Screens (max-width: 1023px)
       mm.add('(max-width: 1023px)', () => {
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: containerRef.current,
             start: 'top top',
-            end: '+=150%',
+            end: '+=120%',
             pin: true,
             scrub: 0.4,
             anticipatePin: 1,
@@ -229,13 +256,13 @@ export const HeroScrub = () => {
           0
         );
 
-        // 25% to 75%: Frame scrub with rAF throttle
+        // 25% to 100%: Frame scrub with rAF throttle
         tl.to(
           playhead,
           {
             frame: TOTAL_FRAMES - 1,
             ease: 'none',
-            duration: 0.5,
+            duration: 0.75,
             onUpdate: () => {
               const target = Math.round(playhead.frame);
               if (target !== activeFrameRef.current && imagesRef.current[target]) {
@@ -247,24 +274,6 @@ export const HeroScrub = () => {
             },
           },
           0.25
-        );
-
-        // 75% to 100%: Mobile discovery card fade in
-        tl.fromTo(
-          discoveryCardRef.current,
-          {
-            opacity: 0,
-            y: 30,
-            scale: 0.96,
-          },
-          {
-            opacity: 1,
-            y: 0,
-            scale: 1,
-            ease: 'power3.out',
-            duration: 0.25,
-          },
-          0.75
         );
       });
 
@@ -305,7 +314,7 @@ export const HeroScrub = () => {
       {/* Hero Content Container */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 sm:pb-16 flex flex-col items-center justify-between h-full min-h-[100dvh] will-change-transform will-change-opacity">
         {/* Location Micro-badge */}
-        <div ref={badgeRef} className="w-full flex justify-center opacity-100 will-change-transform will-change-opacity mt-2 sm:mt-0">
+        <div ref={badgeRef} className="w-full flex justify-center will-change-transform will-change-opacity mt-2 sm:mt-0">
           <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-[#FAF7F2]/15 backdrop-blur-md border border-[#FAF7F2]/25 shadow-sm">
             <span className="salt-pulse-dot" />
             <span className="font-mono text-[10px] sm:text-xs uppercase tracking-widest text-[#FAF7F2] font-semibold text-center">
@@ -314,21 +323,31 @@ export const HeroScrub = () => {
           </div>
         </div>
 
-        {/* Center Main Headline */}
+        {/* Center Main Headline with Split-Word Kinetic Wrappers */}
         <div
           ref={headlineRef}
-          className="max-w-4xl mx-auto text-center my-auto opacity-100 will-change-transform will-change-opacity px-2"
+          className="max-w-4xl mx-auto text-center my-auto will-change-transform will-change-opacity px-2"
         >
           <h1
-            className="font-canela text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-normal text-[#FAF7F2] leading-[1.12] sm:leading-[1.08] tracking-tight mb-4 sm:mb-6"
+            className="font-canela text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-normal text-[#FAF7F2] leading-[1.1] sm:leading-[1.05] tracking-tight mb-4 sm:mb-6"
             style={{ textShadow: '0 4px 30px rgba(0,0,0,0.85)' }}
           >
-            The Art of <span className="italic font-light text-[#E8998D]">Salted Roasts</span> & <br className="hidden sm:inline" />
-            Hearth Bakes
+            <span className="block pb-1">
+              <span className="inline-block hero-split-word">The</span>{' '}
+              <span className="inline-block hero-split-word">Art</span>{' '}
+              <span className="inline-block hero-split-word">of</span>{' '}
+              <span className="inline-block hero-split-word italic font-light text-[#E8998D]">Salted</span>{' '}
+              <span className="inline-block hero-split-word italic font-light text-[#E8998D]">Roasts</span>{' '}
+              <span className="inline-block hero-split-word">&</span>
+            </span>
+            <span className="block pb-1">
+              <span className="inline-block hero-split-word">Hearth</span>{' '}
+              <span className="inline-block hero-split-word">Bakes</span>
+            </span>
           </h1>
 
           <p
-            className="font-subheading text-xs sm:text-base md:text-xl text-[#FAF7F2]/90 font-light max-w-2xl mx-auto mb-6 sm:mb-8 leading-relaxed tracking-wide"
+            className="font-subheading text-xs sm:text-base md:text-xl text-[#FAF7F2]/90 font-light max-w-2xl mx-auto mb-6 sm:mb-8 leading-relaxed tracking-wide hero-sub-text"
             style={{ textShadow: '0 2px 14px rgba(0,0,0,0.9)' }}
           >
             Where Himalayan rock salt mineral notes meet single-origin espresso pulls and 36-hour wild-fermented stone hearth culinary craft.
@@ -337,7 +356,7 @@ export const HeroScrub = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-md mx-auto sm:max-w-none">
             <a
               href="#specialties"
-              className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg"
+              className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg hero-cta-btn"
               style={{ minHeight: '48px', padding: '12px 28px' }}
             >
               <span>Explore Specialties</span>
@@ -345,7 +364,7 @@ export const HeroScrub = () => {
             </a>
             <Link
               href="/reserve"
-              className="btn-secondary w-full sm:w-auto flex items-center justify-center shadow-lg cursor-pointer"
+              className="btn-secondary w-full sm:w-auto flex items-center justify-center shadow-lg cursor-pointer hero-cta-btn"
               style={{
                 backgroundColor: 'rgba(24, 24, 26, 0.7)',
                 borderColor: 'rgba(250, 247, 242, 0.4)',
@@ -358,35 +377,6 @@ export const HeroScrub = () => {
             >
               Reserve a Table
             </Link>
-          </div>
-        </div>
-
-        {/* Extraction Discovery Card */}
-        <div
-          ref={discoveryCardRef}
-          className="absolute bottom-12 sm:bottom-16 left-1/2 -translate-x-1/2 opacity-0 pointer-events-auto z-30 w-full max-w-sm sm:max-w-md px-4 will-change-transform will-change-opacity"
-        >
-          <div className="bg-[#18181A]/90 backdrop-blur-xl border border-[#FAF7F2]/20 rounded-2xl p-4 sm:p-5 shadow-2xl flex items-center justify-between text-left">
-            <div className="flex items-center gap-3 sm:gap-3.5">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#E8998D]/20 text-[#E8998D] flex items-center justify-center shrink-0">
-                <Flame size={18} />
-              </div>
-              <div>
-                <span className="font-mono text-[9px] sm:text-[10px] tracking-widest uppercase text-[#E8998D] font-bold">
-                  Hearth Extraction Live
-                </span>
-                <h3 className="font-canela text-sm sm:text-base text-[#FAF7F2] font-normal leading-snug">
-                  Transforming Raw Dough into Golden Crust
-                </h3>
-              </div>
-            </div>
-            <a
-              href="#specialties"
-              className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#E8998D] hover:text-[#18181A] transition-colors shrink-0 ml-2"
-              aria-label="Scroll to specialties"
-            >
-              <ArrowDown size={14} />
-            </a>
           </div>
         </div>
 

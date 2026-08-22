@@ -34,7 +34,7 @@ export default function HomePage() {
     <StoreProvider>
       <CartProvider>
         {/* Main Single Page Web App */}
-        <main className="min-h-screen bg-[#FAF7F2] text-[#18181A] relative font-sans">
+        <main className="min-h-screen bg-[#18181A] text-[#FAF7F2] relative font-sans">
           {/* Navigation Bar */}
           <Header />
 

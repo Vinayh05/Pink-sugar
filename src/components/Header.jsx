@@ -138,7 +138,7 @@ export const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-8 whitespace-nowrap">
             {navLinks.map((link) => (
               <a
                 key={link.label}
@@ -203,11 +203,11 @@ export const Header = () => {
               )}
             </button>
 
-            {/* Mobile Menu Hamburger Trigger */}
+            {/* Mobile/Tablet Menu Hamburger Trigger */}
             <button
               type="button"
               onClick={handleMenuToggle}
-              className={`p-2.5 rounded-xl md:hidden transition-colors touch-manipulation cursor-pointer flex items-center justify-center min-w-[44px] min-h-[44px] ${
+              className={`p-2.5 rounded-xl lg:hidden transition-colors touch-manipulation cursor-pointer flex items-center justify-center min-w-[44px] min-h-[44px] ${
                 scrolled
                   ? 'bg-[#EFECE6] text-[#18181A] hover:bg-[#E8DECE]'
                   : 'bg-white/10 text-[#FAF7F2] hover:bg-white/20'

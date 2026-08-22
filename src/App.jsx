@@ -1,11 +1,11 @@
 import React from 'react';
+import { StoreProvider } from './context/StoreContext';
 import { CartProvider } from './context/CartContext';
 import { Header } from './components/Header';
 import { HeroScrub } from './components/HeroScrub';
-import { ArtisanalBento } from './components/ArtisanalBento';
-import { CraftCategories } from './components/CraftCategories';
-import { PinkSaltPromise } from './components/PinkSaltPromise';
-import { MenuSection } from './components/MenuSection';
+import { EditorialMagneticSplit } from './components/EditorialMagneticSplit';
+import { CommunityReviewsCanvas } from './components/CommunityReviewsCanvas';
+import { MenuTeaser } from './components/MenuTeaser';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { ReservationModal } from './components/ReservationModal';
@@ -15,37 +15,36 @@ import { FloatingCartDock } from './components/FloatingCartDock';
 
 function App() {
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-[#FAF7F2] text-[#18181A] selection:bg-[#E8998D] selection:text-[#18181A] relative font-sans">
-        {/* Navigation Bar */}
-        <Header />
+    <StoreProvider>
+      <CartProvider>
+        <div className="min-h-screen bg-[#18181A] text-[#FAF7F2] relative font-sans">
+          {/* Navigation Bar */}
+          <Header />
 
-        {/* Section 1: Hero Canvas 300-Frame Scroll Scrub */}
-        <HeroScrub />
+          {/* Section 1: Hero Canvas Video Scrub */}
+          <HeroScrub />
 
-        {/* Section 2: Artisanal Offerings (5-Card Bento Grid) */}
-        <ArtisanalBento />
+          {/* Section 2: Craft & Specialties (Editorial Magnetic Split - Single Instance) */}
+          <EditorialMagneticSplit />
 
-        {/* Section 3: Craft Categories (Interactive Switcher / Carousel) */}
-        <CraftCategories />
+          {/* Section 3: Community Reviews Canvas */}
+          <CommunityReviewsCanvas />
 
-        {/* Section 4: The Pink Salt Promise & Community (Dual Split) */}
-        <PinkSaltPromise />
+          {/* Section 4: Curated Menu Teaser */}
+          <MenuTeaser />
 
-        {/* Section 5: Full Interactive Menu & Repertoire */}
-        <MenuSection />
+          {/* Section 5: Modern Luxury Footer */}
+          <Footer />
 
-        {/* Footer */}
-        <Footer />
-
-        {/* Modals & Overlays */}
-        <CartDrawer />
-        <ReservationModal />
-        <ReviewModal />
-        <CheckoutModal />
-        <FloatingCartDock />
-      </div>
-    </CartProvider>
+          {/* Modals & Overlays */}
+          <CartDrawer />
+          <ReservationModal />
+          <ReviewModal />
+          <CheckoutModal />
+          <FloatingCartDock />
+        </div>
+      </CartProvider>
+    </StoreProvider>
   );
 }
 
