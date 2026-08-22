@@ -6,8 +6,8 @@
  * Includes Supabase Realtime WebSocket subscription handlers for instant cross-device sync.
  */
 
-import { getSupabaseClient } from '../lib/supabaseClient';
-import { MENU_DATA } from '../data/menuData';
+import { getSupabaseClient } from '../lib/supabaseClient.js';
+import { MENU_DATA } from '../data/menuData.js';
 
 /**
  * @typedef {Object} Review
