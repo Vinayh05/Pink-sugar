@@ -30,7 +30,7 @@ import { MENU_DATA } from '../data/menuData';
  * @property {Array} items
  * @property {string} notes
  * @property {number} total
- * @property {'received'|'preparing'|'ready'|'completed'} status
+ * @property {'received'|'preparing'|'ready'|'completed'|'in_kitchen'} status
  */
 
 /**
@@ -112,7 +112,11 @@ const DEFAULT_REVIEWS = [
 const DEFAULT_ORDERS = [
   {
     id: 'PS-1042',
-    customer: { name: 'Aditi Deshmukh', phone: '+91 98450 12345' },
+    customer: { name: 'Aditi Deshmukh', phone: '+91 98450 12345', email: 'aditi.deshmukh@gmail.com' },
+    customerName: 'Aditi Deshmukh',
+    customerPhone: '+91 98450 12345',
+    customerEmail: 'aditi.deshmukh@gmail.com',
+    tableOrTakeaway: 'Dine-in: Table 04',
     type: 'Dine-in: Table 04',
     timestamp: '10 mins ago',
     items: [
@@ -125,7 +129,11 @@ const DEFAULT_ORDERS = [
   },
   {
     id: 'PS-1041',
-    customer: { name: 'Rohit Kulkarni', phone: '+91 97412 88392' },
+    customer: { name: 'Rohit Kulkarni', phone: '+91 97412 88392', email: 'rohit.k@yahoo.com' },
+    customerName: 'Rohit Kulkarni',
+    customerPhone: '+91 97412 88392',
+    customerEmail: 'rohit.k@yahoo.com',
+    tableOrTakeaway: 'Takeaway Pickup',
     type: 'Takeaway',
     timestamp: '18 mins ago',
     items: [
@@ -134,11 +142,15 @@ const DEFAULT_ORDERS = [
     ],
     notes: 'Packaging in eco-box. Pick-up at counter.',
     total: 640,
-    status: 'preparing',
+    status: 'in_kitchen',
   },
   {
     id: 'PS-1040',
-    customer: { name: 'Priya Patil', phone: '+91 94480 66201' },
+    customer: { name: 'Priya Patil', phone: '+91 94480 66201', email: 'priya.patil@outlook.com' },
+    customerName: 'Priya Patil',
+    customerPhone: '+91 94480 66201',
+    customerEmail: 'priya.patil@outlook.com',
+    tableOrTakeaway: 'Dine-in: Table 02',
     type: 'Dine-in: Table 02',
     timestamp: '25 mins ago',
     items: [
@@ -151,7 +163,11 @@ const DEFAULT_ORDERS = [
   },
   {
     id: 'PS-1039',
-    customer: { name: 'Vikram Shenoy', phone: '+91 98860 44912' },
+    customer: { name: 'Vikram Shenoy', phone: '+91 98860 44912', email: 'vikram.shenoy@corp.in' },
+    customerName: 'Vikram Shenoy',
+    customerPhone: '+91 98860 44912',
+    customerEmail: 'vikram.shenoy@corp.in',
+    tableOrTakeaway: 'Dine-in: Table 06',
     type: 'Dine-in: Table 06',
     timestamp: '42 mins ago',
     items: [
@@ -334,15 +350,71 @@ export const getOrders = async () => {
     const { data, error } = await client
       .from('orders')
       .select('*')
-      .order('timestamp', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) {
       return { data: localOrdersCache, error: null };
     }
 
-    return { data, error: null };
+    const mapped = data.map((d) => ({
+      ...d,
+      customerName: d.customer?.name || d.customerName || 'Guest Patron',
+      customerPhone: d.customer?.phone || d.customerPhone || '',
+      customerEmail: d.customer?.email || d.customerEmail || '',
+      tableOrTakeaway: d.type || d.tableOrTakeaway || 'Dine-in',
+    }));
+
+    return { data: mapped, error: null };
   } catch (err) {
     return { data: localOrdersCache, error: null };
+  }
+};
+
+/**
+ * Create / Place a new order ticket
+ * @param {Object} orderData
+ * @returns {Promise<{ data: Order|null, error: any }>}
+ */
+export const createOrder = async (orderData) => {
+  const newOrder = {
+    id: orderData.id || `PS-${Math.floor(1000 + Math.random() * 9000)}`,
+    customer: {
+      name: orderData.customerName || orderData.customer?.name || 'Guest Patron',
+      phone: orderData.customerPhone || orderData.customer?.phone || '+91 98765 43210',
+      email: orderData.customerEmail || orderData.customer?.email || 'patron@pinksalt.com',
+    },
+    type: orderData.tableOrTakeaway || orderData.type || 'Dine-in Table',
+    timestamp: 'Just now',
+    items: orderData.items || [],
+    notes: orderData.notes || '',
+    total: Number(orderData.total || 0),
+    status: orderData.status || 'received',
+  };
+
+  const clientOrder = {
+    ...newOrder,
+    customerName: newOrder.customer.name,
+    customerPhone: newOrder.customer.phone,
+    customerEmail: newOrder.customer.email,
+    tableOrTakeaway: newOrder.type,
+  };
+
+  localOrdersCache = [clientOrder, ...localOrdersCache];
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { data: clientOrder, error: null };
+  }
+
+  try {
+    const { data, error } = await client.from('orders').insert([newOrder]).select();
+    if (error) {
+      console.warn('[dataService.createOrder] Supabase write failed, retained locally:', error.message);
+      return { data: clientOrder, error: null };
+    }
+    return { data: clientOrder, error: null };
+  } catch (err) {
+    return { data: clientOrder, error: null };
   }
 };
 
@@ -380,8 +452,8 @@ export const advanceOrderStatus = async (orderId, nextStatus) => {
    ========================================================================= */
 
 /**
- * Fetch inventory items with stock & special flags
- * @returns {Promise<{ data: InventoryItem[], error: any }>}
+ * Fetch inventory items with stock & special flags merged with rich menu metadata
+ * @returns {Promise<{ data: any[], error: any }>}
  */
 export const getInventory = async () => {
   const client = getSupabaseClient();
@@ -394,7 +466,26 @@ export const getInventory = async () => {
     if (error || !data || data.length === 0) {
       return { data: localInventoryCache, error: null };
     }
-    return { data, error: null };
+
+    // Merge database state (price, inStock, isSpecial) with local visual metadata (images, description, tags)
+    const merged = MENU_DATA.map((masterItem) => {
+      const dbRow = data.find((d) => String(d.id) === String(masterItem.id));
+      if (!dbRow) return { ...masterItem, inStock: true, isAvailable: true, isSpecial: masterItem.featured || false };
+
+      const inStock = dbRow.inStock !== false;
+      const isSpecial = dbRow.isSpecial === true;
+      const price = Number(dbRow.price) || masterItem.price;
+
+      return {
+        ...masterItem,
+        price,
+        inStock,
+        isAvailable: inStock,
+        isSpecial,
+      };
+    });
+
+    return { data: merged, error: null };
   } catch (err) {
     return { data: localInventoryCache, error: null };
   }
@@ -402,25 +493,32 @@ export const getInventory = async () => {
 
 /**
  * Update an inventory item (stock, special, price)
- * @param {string} itemId
+ * @param {string|number} itemId
  * @param {Partial<InventoryItem>} updates
  * @returns {Promise<{ data: InventoryItem|null, error: any }>}
  */
 export const updateInventoryItem = async (itemId, updates) => {
+  const strId = String(itemId);
   localInventoryCache = localInventoryCache.map((item) =>
-    item.id === itemId ? { ...item, ...updates } : item
+    String(item.id) === strId ? { ...item, ...updates } : item
   );
 
   const client = getSupabaseClient();
   if (!client) {
-    return { data: localInventoryCache.find((i) => i.id === itemId) || null, error: null };
+    return { data: localInventoryCache.find((i) => String(i.id) === strId) || null, error: null };
   }
 
   try {
+    const dbPayload = {};
+    if (updates.inStock !== undefined) dbPayload.inStock = updates.inStock;
+    if (updates.isAvailable !== undefined) dbPayload.inStock = updates.isAvailable;
+    if (updates.isSpecial !== undefined) dbPayload.isSpecial = updates.isSpecial;
+    if (updates.price !== undefined) dbPayload.price = Number(updates.price);
+
     const { data, error } = await client
       .from('inventory')
-      .update(updates)
-      .eq('id', itemId)
+      .update(dbPayload)
+      .eq('id', strId)
       .select();
 
     return { data: data?.[0] || null, error };
@@ -525,7 +623,7 @@ export const subscribeToTable = (table, callback) => {
 
   try {
     const channel = client
-      .channel(`realtime_${table}_${Date.now()}`)
+      .channel(`realtime_${table}_${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: table },
@@ -565,12 +663,23 @@ export const subscribeToReviews = (callback) => {
  */
 export const subscribeToOrders = (callback) => {
   return subscribeToTable('orders', (payload) => {
-    if (payload.eventType === 'INSERT' && payload.new) {
-      localOrdersCache = [payload.new, ...localOrdersCache.filter((o) => o.id !== payload.new.id)];
-    } else if (payload.eventType === 'UPDATE' && payload.new) {
-      localOrdersCache = localOrdersCache.map((o) => (o.id === payload.new.id ? payload.new : o));
+    const raw = payload.new;
+    const formatted = raw
+      ? {
+          ...raw,
+          customerName: raw.customer?.name || raw.customerName || 'Guest Patron',
+          customerPhone: raw.customer?.phone || raw.customerPhone || '',
+          customerEmail: raw.customer?.email || raw.customerEmail || '',
+          tableOrTakeaway: raw.type || raw.tableOrTakeaway || 'Dine-in',
+        }
+      : null;
+
+    if (payload.eventType === 'INSERT' && formatted) {
+      localOrdersCache = [formatted, ...localOrdersCache.filter((o) => o.id !== formatted.id)];
+    } else if (payload.eventType === 'UPDATE' && formatted) {
+      localOrdersCache = localOrdersCache.map((o) => (o.id === formatted.id ? formatted : o));
     }
-    callback(payload);
+    callback({ ...payload, new: formatted });
   });
 };
 
@@ -583,7 +692,7 @@ export const subscribeToInventory = (callback) => {
   return subscribeToTable('inventory', (payload) => {
     if (payload.eventType === 'UPDATE' && payload.new) {
       localInventoryCache = localInventoryCache.map((i) =>
-        i.id === payload.new.id ? { ...i, ...payload.new } : i
+        String(i.id) === String(payload.new.id) ? { ...i, ...payload.new } : i
       );
     }
     callback(payload);

@@ -1,157 +1,90 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { MENU_DATA } from '../data/menuData';
+import {
+  getInventory,
+  updateInventoryItem as updateInventoryItemService,
+  getOrders,
+  createOrder as createOrderService,
+  advanceOrderStatus as advanceOrderStatusService,
+  getCustomers,
+  subscribeToInventory,
+  subscribeToOrders,
+} from '../services/dataService';
 
 const StoreContext = createContext();
 
-const STORAGE_KEY = 'pink_salt_global_state';
-
-// Initial Mock Orders
-const INITIAL_ORDERS = [
-  {
-    id: 'PS-1042',
-    customerName: 'Aditi Deshmukh',
-    customerPhone: '+91 98450 12345',
-    customerEmail: 'aditi.deshmukh@gmail.com',
-    tableOrTakeaway: 'Dine-in: Table 04',
-    timestamp: '10 mins ago',
-    items: [
-      { name: 'Signature Pink Sauce Penne', qty: 2, price: 340 },
-      { name: 'Pink Salt Velvet Cold Brew', qty: 2, price: 280 },
-    ],
-    notes: 'Extra cracked Himalayan salt on pasta, less ice in cold brew.',
-    total: 1240,
-    status: 'received', // 'received' | 'in_kitchen' | 'ready' | 'completed'
-  },
-  {
-    id: 'PS-1041',
-    customerName: 'Rohit Kulkarni',
-    customerPhone: '+91 97412 88392',
-    customerEmail: 'rohit.k@yahoo.com',
-    tableOrTakeaway: 'Takeaway Pickup',
-    timestamp: '18 mins ago',
-    items: [
-      { name: 'Blistered Margherita Pizza', qty: 1, price: 380 },
-      { name: 'Baked Blueberry Cheesecake', qty: 1, price: 260 },
-    ],
-    notes: 'Packaging in eco-box. Pick-up at counter.',
-    total: 640,
-    status: 'in_kitchen',
-  },
-  {
-    id: 'PS-1040',
-    customerName: 'Priya Patil',
-    customerPhone: '+91 94480 66201',
-    customerEmail: 'priya.patil@outlook.com',
-    tableOrTakeaway: 'Dine-in: Table 02',
-    timestamp: '25 mins ago',
-    items: [
-      { name: 'Golden Butter Croissant', qty: 2, price: 180 },
-      { name: 'Single-Origin Morning Roast', qty: 2, price: 210 },
-    ],
-    notes: 'Warm croissants before serving.',
-    total: 780,
-    status: 'ready',
-  },
-  {
-    id: 'PS-1039',
-    customerName: 'Vikram Shenoy',
-    customerPhone: '+91 98860 44912',
-    customerEmail: 'vikram.shenoy@corp.in',
-    tableOrTakeaway: 'Dine-in: Table 06',
-    timestamp: '42 mins ago',
-    items: [
-      { name: 'Charred Truffle Mushroom Pizza', qty: 1, price: 440 },
-      { name: 'Rustic Garlic Arrabiata', qty: 1, price: 310 },
-    ],
-    notes: 'Served and settled.',
-    total: 750,
-    status: 'completed',
-  },
-];
-
-// Initial Initial Menu Items
-const INITIAL_MENU = MENU_DATA.map((item) => ({
-  ...item,
-  isAvailable: true,
-  isSpecial: item.featured || false,
-}));
-
 export const StoreProvider = ({ children }) => {
-  const [menuItems, setMenuItems] = useState(INITIAL_MENU);
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [menuItems, setMenuItems] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [toastMessage, setToastMessage] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Initialize State from LocalStorage on mount
-  useEffect(() => {
+  // Fetch initial data from Supabase Service Layer
+  const fetchData = useCallback(async () => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.menuItems && Array.isArray(parsed.menuItems)) {
-          // Merge with any new fields from master MENU_DATA
-          const mergedMenu = INITIAL_MENU.map((masterItem) => {
-            const savedItem = parsed.menuItems.find((s) => s.id === masterItem.id);
-            return savedItem ? { ...masterItem, ...savedItem } : masterItem;
-          });
-          setMenuItems(mergedMenu);
-        }
-        if (parsed.orders && Array.isArray(parsed.orders)) {
-          setOrders(parsed.orders);
-        }
-      }
+      setIsLoading(true);
+      const [invRes, ordRes, custRes] = await Promise.all([
+        getInventory(),
+        getOrders(),
+        getCustomers(),
+      ]);
+
+      if (invRes.data) setMenuItems(invRes.data);
+      if (ordRes.data) setOrders(ordRes.data);
+      if (custRes.data) setCustomers(custRes.data);
     } catch (e) {
-      console.warn('Could not read pink_salt_global_state from localStorage', e);
+      console.warn('[StoreContext] Failed fetching initial data:', e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  // 2. Persist State to LocalStorage & Dispatch Cross-Tab Sync
-  const persistState = useCallback((newMenu, newOrders) => {
-    try {
-      const stateToSave = {
-        menuItems: newMenu,
-        orders: newOrders,
-        updatedAt: Date.now(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-      // Dispatch custom event for same-tab reactive updates
-      window.dispatchEvent(new Event('pink_salt_state_change'));
-    } catch (e) {
-      console.error('Error saving pink_salt_global_state to localStorage', e);
-    }
-  }, []);
-
-  // 3. Listen for Storage Events across browser tabs
+  // Mount Supabase Realtime WebSocket Subscriptions for Live Cross-Device Sync
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (parsed.menuItems) setMenuItems(parsed.menuItems);
-          if (parsed.orders) setOrders(parsed.orders);
-        } catch (err) {}
+    fetchData();
+
+    // 1. Live Menu & Inventory Channel Subscription
+    const unsubscribeInventory = subscribeToInventory((payload) => {
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        setMenuItems((prev) =>
+          prev.map((item) => {
+            if (String(item.id) === String(payload.new.id)) {
+              const inStock = payload.new.inStock !== false;
+              const isSpecial = payload.new.isSpecial === true;
+              const price = Number(payload.new.price) || item.price;
+              return {
+                ...item,
+                price,
+                inStock,
+                isAvailable: inStock,
+                isSpecial,
+              };
+            }
+            return item;
+          })
+        );
       }
-    };
+    });
 
-    const handleCustomChange = () => {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.menuItems) setMenuItems(parsed.menuItems);
-          if (parsed.orders) setOrders(parsed.orders);
-        }
-      } catch (err) {}
-    };
+    // 2. Live Orders Channel Subscription
+    const unsubscribeOrders = subscribeToOrders((payload) => {
+      if (payload.eventType === 'INSERT' && payload.new) {
+        setOrders((prev) => [payload.new, ...prev.filter((o) => o.id !== payload.new.id)]);
+        showToast(`🔔 New Order received: #${payload.new.id}`);
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        setOrders((prev) =>
+          prev.map((order) => (order.id === payload.new.id ? { ...order, ...payload.new } : order))
+        );
+      }
+    });
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('pink_salt_state_change', handleCustomChange);
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('pink_salt_state_change', handleCustomChange);
+      unsubscribeInventory();
+      unsubscribeOrders();
     };
-  }, []);
+  }, [fetchData]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -160,50 +93,60 @@ export const StoreProvider = ({ children }) => {
     }, 3500);
   };
 
-  // Actions for Menu & Inventory
-  const toggleItemAvailability = (itemId) => {
-    setMenuItems((prev) => {
-      const next = prev.map((item) => {
-        if (item.id === itemId) {
-          const updated = !item.isAvailable;
-          showToast(`${item.name} is now ${updated ? 'AVAILABLE' : 'SOLD OUT'}`);
-          return { ...item, isAvailable: updated };
-        }
-        return item;
-      });
-      persistState(next, orders);
-      return next;
-    });
+  // Actions for Menu & Inventory -> Writes directly to Supabase
+  const toggleItemAvailability = async (itemId) => {
+    const item = menuItems.find((i) => String(i.id) === String(itemId));
+    if (!item) return;
+
+    const nextState = !item.isAvailable;
+
+    // Optimistic UI update
+    setMenuItems((prev) =>
+      prev.map((i) =>
+        String(i.id) === String(itemId) ? { ...i, isAvailable: nextState, inStock: nextState } : i
+      )
+    );
+
+    showToast(`${item.name} is now ${nextState ? 'AVAILABLE' : 'SOLD OUT'}`);
+
+    // Persist to Supabase database
+    await updateInventoryItem(itemId, { inStock: nextState, isAvailable: nextState });
   };
 
-  const updateItemPrice = (itemId, newPrice) => {
+  const updateItemPrice = async (itemId, newPrice) => {
     const numPrice = Number(newPrice);
     if (isNaN(numPrice) || numPrice <= 0) return;
-    setMenuItems((prev) => {
-      const next = prev.map((item) => (item.id === itemId ? { ...item, price: numPrice } : item));
-      persistState(next, orders);
-      return next;
-    });
+
+    // Optimistic UI update
+    setMenuItems((prev) =>
+      prev.map((item) => (String(item.id) === String(itemId) ? { ...item, price: numPrice } : item))
+    );
+
     showToast(`Price updated to ₹${numPrice}`);
+
+    // Persist to Supabase database
+    await updateInventoryItem(itemId, { price: numPrice });
   };
 
-  const toggleDailySpecial = (itemId) => {
-    setMenuItems((prev) => {
-      const next = prev.map((item) => {
-        if (item.id === itemId) {
-          const updated = !item.isSpecial;
-          showToast(`${item.name} ${updated ? 'pinned to Daily Specials' : 'unpinned'}`);
-          return { ...item, isSpecial: updated };
-        }
-        return item;
-      });
-      persistState(next, orders);
-      return next;
-    });
+  const toggleDailySpecial = async (itemId) => {
+    const item = menuItems.find((i) => String(i.id) === String(itemId));
+    if (!item) return;
+
+    const nextState = !item.isSpecial;
+
+    // Optimistic UI update
+    setMenuItems((prev) =>
+      prev.map((i) => (String(i.id) === String(itemId) ? { ...i, isSpecial: nextState } : i))
+    );
+
+    showToast(`${item.name} ${nextState ? 'pinned to Daily Specials' : 'unpinned'}`);
+
+    // Persist to Supabase database
+    await updateInventoryItem(itemId, { isSpecial: nextState });
   };
 
-  // Actions for Orders
-  const placeOrder = (orderData) => {
+  // Actions for Orders -> Writes directly to Supabase
+  const placeOrder = async (orderData) => {
     const newTicket = {
       id: orderData.id || `PS-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName: orderData.customerName || 'Guest Patron',
@@ -217,115 +160,26 @@ export const StoreProvider = ({ children }) => {
       status: 'received',
     };
 
-    setOrders((prev) => {
-      const next = [newTicket, ...prev];
-      persistState(menuItems, next);
-      return next;
-    });
-
+    // Optimistic UI update
+    setOrders((prev) => [newTicket, ...prev]);
     showToast(`Order #${newTicket.id} confirmed! Sent directly to stone hearth kitchen.`);
+
+    // Persist to Supabase database
+    await createOrderService(newTicket);
     return newTicket;
   };
 
-  const updateOrderStatus = (orderId, nextStatus) => {
-    setOrders((prev) => {
-      const next = prev.map((order) => {
-        if (order.id === orderId) {
-          showToast(`Order ${orderId} moved to ${nextStatus.toUpperCase()}`);
-          return { ...order, status: nextStatus };
-        }
-        return order;
-      });
-      persistState(menuItems, next);
-      return next;
-    });
+  const updateOrderStatus = async (orderId, nextStatus) => {
+    // Optimistic UI update
+    setOrders((prev) =>
+      prev.map((order) => (order.id === orderId ? { ...order, status: nextStatus } : order))
+    );
+
+    showToast(`Order ${orderId} moved to ${nextStatus.toUpperCase()}`);
+
+    // Persist to Supabase database
+    await advanceOrderStatusService(orderId, nextStatus);
   };
-
-  // Dynamic Customer CRM Derivation
-  const customers = React.useMemo(() => {
-    const map = new Map();
-
-    // 1. Process from placed orders
-    orders.forEach((ord) => {
-      const phone = ord.customerPhone || 'unknown';
-      if (!map.has(phone)) {
-        map.set(phone, {
-          id: `CUST-${phone.slice(-4)}`,
-          name: ord.customerName || 'Guest Patron',
-          phone: ord.customerPhone,
-          email: ord.customerEmail || 'patron@example.com',
-          ordersCount: 1,
-          ltv: ord.total || 0,
-          lastVisited: ord.timestamp,
-          favoriteCategory: ord.items[0]?.name || 'Specialty Hearth',
-          segment: ord.total > 2000 ? 'VIP Spenders (>₹2000)' : 'Dine-in Regular',
-        });
-      } else {
-        const existing = map.get(phone);
-        existing.ordersCount += 1;
-        existing.ltv += ord.total || 0;
-        if (existing.ltv > 2000) {
-          existing.segment = 'VIP Spenders (>₹2000)';
-        }
-      }
-    });
-
-    // 2. Merge with fallback default patrons
-    const initialList = [
-      {
-        id: 'CUST-2345',
-        name: 'Ananya Deshmukh',
-        phone: '+91 98450 12345',
-        email: 'ananya.deshmukh@gmail.com',
-        ordersCount: 14,
-        ltv: 4850,
-        lastVisited: 'Yesterday',
-        favoriteCategory: 'Pastas',
-        segment: 'VIP Spenders (>₹2000)',
-      },
-      {
-        id: 'CUST-8392',
-        name: 'Dr. Rohan Kulkarni',
-        phone: '+91 97412 88392',
-        email: 'rohan.kulkarni@apollo.org',
-        ordersCount: 9,
-        ltv: 3420,
-        lastVisited: '3 days ago',
-        favoriteCategory: 'Pizzas',
-        segment: 'VIP Spenders (>₹2000)',
-      },
-      {
-        id: 'CUST-6201',
-        name: 'Pooja Hegde',
-        phone: '+91 94480 66201',
-        email: 'pooja.foodie@outlook.com',
-        ordersCount: 7,
-        ltv: 2190,
-        lastVisited: '1 week ago',
-        favoriteCategory: 'Bakes',
-        segment: 'Repeat Diners',
-      },
-      {
-        id: 'CUST-4912',
-        name: 'Vikram Patil',
-        phone: '+91 98860 44912',
-        email: 'vikram.patil@techhub.in',
-        ordersCount: 12,
-        ltv: 3890,
-        lastVisited: '2 days ago',
-        favoriteCategory: 'Brews',
-        segment: 'Cold Brew Lovers',
-      },
-    ];
-
-    initialList.forEach((c) => {
-      if (!map.has(c.phone)) {
-        map.set(c.phone, c);
-      }
-    });
-
-    return Array.from(map.values());
-  }, [orders]);
 
   return (
     <StoreContext.Provider
@@ -333,6 +187,7 @@ export const StoreProvider = ({ children }) => {
         menuItems,
         orders,
         customers,
+        isLoading,
         toggleItemAvailability,
         updateItemPrice,
         toggleDailySpecial,
@@ -340,6 +195,7 @@ export const StoreProvider = ({ children }) => {
         updateOrderStatus,
         showToast,
         toastMessage,
+        refreshData: fetchData,
       }}
     >
       {children}
