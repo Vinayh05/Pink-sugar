@@ -3,7 +3,7 @@
  * @description Dedicated Data Layer Abstraction for Pink Sugar Cafe.
  * Exposes clean, typed asynchronous helper functions to read and write to Supabase
  * with seamless fallback to local mock data to prevent UI crashes.
- * Includes Supabase Realtime WebSocket subscription handlers for instant cross-device sync.
+ * Includes Dual-Layer Realtime Sync (Supabase PostgreSQL WebSocket Channels + Browser BroadcastChannel).
  */
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
@@ -43,12 +43,16 @@ import { MENU_DATA } from '../data/menuData.js';
  * @property {boolean} isSpecial
  */
 
-/**
- * Default In-Memory Fallback Store
- */
-const DEFAULT_REVIEWS = [
+export const INITIAL_MENU = MENU_DATA.map((item) => ({
+  ...item,
+  inStock: true,
+  isAvailable: true,
+  isSpecial: item.featured || false,
+}));
+
+export const DEFAULT_REVIEWS = [
   {
-    id: 1,
+    id: 'rev-01',
     author: 'Ananya Deshmukh',
     tag: 'Local Guide • 42 reviews',
     rating: 5,
@@ -58,7 +62,7 @@ const DEFAULT_REVIEWS = [
     coords: { top: '12%', left: '8%', rotate: '-2deg' },
   },
   {
-    id: 2,
+    id: 'rev-02',
     author: 'Rohit Kulkarni',
     tag: 'Verified Diner',
     rating: 5,
@@ -68,7 +72,7 @@ const DEFAULT_REVIEWS = [
     coords: { top: '18%', right: '10%', rotate: '2.5deg' },
   },
   {
-    id: 3,
+    id: 'rev-03',
     author: 'Priya Patil',
     tag: 'Local Guide • 18 reviews',
     rating: 5,
@@ -78,7 +82,7 @@ const DEFAULT_REVIEWS = [
     coords: { top: '45%', left: '18%', rotate: '1deg' },
   },
   {
-    id: 4,
+    id: 'rev-04',
     author: 'Siddharth Hegde',
     tag: 'Verified Diner',
     rating: 5,
@@ -88,7 +92,7 @@ const DEFAULT_REVIEWS = [
     coords: { top: '42%', right: '16%', rotate: '-3deg' },
   },
   {
-    id: 5,
+    id: 'rev-05',
     author: 'Kavya Joshi',
     tag: 'Food Enthusiast',
     rating: 5,
@@ -98,7 +102,7 @@ const DEFAULT_REVIEWS = [
     coords: { bottom: '14%', left: '12%', rotate: '2deg' },
   },
   {
-    id: 6,
+    id: 'rev-06',
     author: 'Vikram Shenoy',
     tag: 'Verified Diner',
     rating: 5,
@@ -109,7 +113,7 @@ const DEFAULT_REVIEWS = [
   },
 ];
 
-const DEFAULT_ORDERS = [
+export const DEFAULT_ORDERS = [
   {
     id: 'PS-1042',
     customer: { name: 'Aditi Deshmukh', phone: '+91 98450 12345', email: 'aditi.deshmukh@gmail.com' },
@@ -180,7 +184,7 @@ const DEFAULT_ORDERS = [
   },
 ];
 
-const DEFAULT_CUSTOMERS = [
+export const DEFAULT_CUSTOMERS = [
   {
     id: 'CUST-01',
     name: 'Ananya Deshmukh',
@@ -225,37 +229,11 @@ const DEFAULT_CUSTOMERS = [
     favoriteCategory: 'Brews',
     segment: 'Cold Brew Lovers',
   },
-  {
-    id: 'CUST-05',
-    name: 'Kavya Joshi',
-    phone: '+91 99001 55678',
-    email: 'kavya.j@gmail.com',
-    ordersCount: 4,
-    ltv: 1150,
-    lastVisited: '5 days ago',
-    favoriteCategory: 'Bakes',
-    segment: 'Repeat Diners',
-  },
-  {
-    id: 'CUST-06',
-    name: 'Siddharth Hegde',
-    phone: '+91 98451 99234',
-    email: 'sid.hegde@infosys.com',
-    ordersCount: 8,
-    ltv: 2640,
-    lastVisited: '4 days ago',
-    favoriteCategory: 'Brews',
-    segment: 'Cold Brew Lovers',
-  },
 ];
 
 let localReviewsCache = [...DEFAULT_REVIEWS];
 let localOrdersCache = [...DEFAULT_ORDERS];
-let localInventoryCache = MENU_DATA.map((item) => ({
-  ...item,
-  inStock: true,
-  isSpecial: item.featured || false,
-}));
+let localInventoryCache = [...INITIAL_MENU];
 let localAdminConfig = {
   cafeStatus: 'open',
   hearthActive: true,
@@ -263,14 +241,26 @@ let localAdminConfig = {
   dailyNotice: 'Hearth roaring daily from 8:00 AM. 36h wild ferment batch ready.',
 };
 
+// =========================================================================
+// 0. BROADCAST CHANNEL UTILITIES (Instant zero-latency cross-tab sync)
+// =========================================================================
+
+const broadcastSync = (type, payload) => {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      const bc = new BroadcastChannel('pink_sugar_realtime_bus');
+      bc.postMessage({ type, payload, timestamp: Date.now() });
+      bc.close();
+    } catch (e) {
+      // Ignore broadcast errors
+    }
+  }
+};
+
 /* =========================================================================
    1. REVIEWS SERVICE API
    ========================================================================= */
 
-/**
- * Fetch all verified diner reviews
- * @returns {Promise<{ data: Review[], error: any }>}
- */
 export const getReviews = async () => {
   const client = getSupabaseClient();
   if (!client) {
@@ -289,16 +279,10 @@ export const getReviews = async () => {
 
     return { data, error: null };
   } catch (err) {
-    console.warn('[dataService.getReviews] Falling back to local cache:', err.message);
     return { data: localReviewsCache, error: null };
   }
 };
 
-/**
- * Submit a new customer review
- * @param {Omit<Review, 'id'>} review
- * @returns {Promise<{ data: Review|null, error: any }>}
- */
 export const addReview = async (review) => {
   const newReview = {
     id: `rev-${Date.now()}`,
@@ -311,8 +295,8 @@ export const addReview = async (review) => {
     },
   };
 
-  // Add to local cache immediately
   localReviewsCache = [newReview, ...localReviewsCache];
+  broadcastSync('REVIEW_ADD', newReview);
 
   const client = getSupabaseClient();
   if (!client) {
@@ -321,13 +305,8 @@ export const addReview = async (review) => {
 
   try {
     const { data, error } = await client.from('reviews').insert([newReview]).select();
-    if (error) {
-      console.warn('[dataService.addReview] Supabase write failed, retained locally:', error.message);
-      return { data: newReview, error: null };
-    }
     return { data: data?.[0] || newReview, error: null };
   } catch (err) {
-    console.warn('[dataService.addReview] Local persistence retained:', err.message);
     return { data: newReview, error: null };
   }
 };
@@ -336,10 +315,6 @@ export const addReview = async (review) => {
    2. ORDERS & PIPELINE SERVICE API
    ========================================================================= */
 
-/**
- * Fetch all live kitchen orders
- * @returns {Promise<{ data: Order[], error: any }>}
- */
 export const getOrders = async () => {
   const client = getSupabaseClient();
   if (!client) {
@@ -370,11 +345,6 @@ export const getOrders = async () => {
   }
 };
 
-/**
- * Create / Place a new order ticket
- * @param {Object} orderData
- * @returns {Promise<{ data: Order|null, error: any }>}
- */
 export const createOrder = async (orderData) => {
   const newOrder = {
     id: orderData.id || `PS-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -400,6 +370,7 @@ export const createOrder = async (orderData) => {
   };
 
   localOrdersCache = [clientOrder, ...localOrdersCache];
+  broadcastSync('ORDER_CREATE', clientOrder);
 
   const client = getSupabaseClient();
   if (!client) {
@@ -407,27 +378,18 @@ export const createOrder = async (orderData) => {
   }
 
   try {
-    const { data, error } = await client.from('orders').insert([newOrder]).select();
-    if (error) {
-      console.warn('[dataService.createOrder] Supabase write failed, retained locally:', error.message);
-      return { data: clientOrder, error: null };
-    }
+    await client.from('orders').insert([newOrder]);
     return { data: clientOrder, error: null };
   } catch (err) {
     return { data: clientOrder, error: null };
   }
 };
 
-/**
- * Advance an order to the next kitchen status
- * @param {string} orderId
- * @param {string} nextStatus
- * @returns {Promise<{ data: Order|null, error: any }>}
- */
 export const advanceOrderStatus = async (orderId, nextStatus) => {
   localOrdersCache = localOrdersCache.map((order) =>
     order.id === orderId ? { ...order, status: nextStatus } : order
   );
+  broadcastSync('ORDER_UPDATE', { id: orderId, status: nextStatus });
 
   const client = getSupabaseClient();
   if (!client) {
@@ -451,10 +413,6 @@ export const advanceOrderStatus = async (orderId, nextStatus) => {
    3. INVENTORY & MENU STATUS SERVICE API
    ========================================================================= */
 
-/**
- * Fetch inventory items with stock & special flags merged with rich menu metadata
- * @returns {Promise<{ data: any[], error: any }>}
- */
 export const getInventory = async () => {
   const client = getSupabaseClient();
   if (!client) {
@@ -467,7 +425,6 @@ export const getInventory = async () => {
       return { data: localInventoryCache, error: null };
     }
 
-    // Merge database state (price, inStock, isSpecial) with local visual metadata (images, description, tags)
     const merged = MENU_DATA.map((masterItem) => {
       const dbRow = data.find((d) => String(d.id) === String(masterItem.id));
       if (!dbRow) return { ...masterItem, inStock: true, isAvailable: true, isSpecial: masterItem.featured || false };
@@ -491,17 +448,14 @@ export const getInventory = async () => {
   }
 };
 
-/**
- * Update an inventory item (stock, special, price)
- * @param {string|number} itemId
- * @param {Partial<InventoryItem>} updates
- * @returns {Promise<{ data: InventoryItem|null, error: any }>}
- */
 export const updateInventoryItem = async (itemId, updates) => {
   const strId = String(itemId);
   localInventoryCache = localInventoryCache.map((item) =>
     String(item.id) === strId ? { ...item, ...updates } : item
   );
+
+  // Broadcast instantly to all same-browser tabs/windows
+  broadcastSync('INVENTORY_UPDATE', { id: strId, ...updates });
 
   const client = getSupabaseClient();
   if (!client) {
@@ -531,10 +485,6 @@ export const updateInventoryItem = async (itemId, updates) => {
    4. CUSTOMER CRM SERVICE API
    ========================================================================= */
 
-/**
- * Fetch CRM customer list
- * @returns {Promise<{ data: any[], error: any }>}
- */
 export const getCustomers = async () => {
   const client = getSupabaseClient();
   if (!client) {
@@ -556,10 +506,6 @@ export const getCustomers = async () => {
    5. ADMIN STORE CONFIGURATION SERVICE API
    ========================================================================= */
 
-/**
- * Fetch Admin Cafe Configuration
- * @returns {Promise<{ data: Object, error: any }>}
- */
 export const getAdminConfig = async () => {
   const client = getSupabaseClient();
   if (!client) {
@@ -582,13 +528,9 @@ export const getAdminConfig = async () => {
   }
 };
 
-/**
- * Save / Update Admin Cafe Configuration
- * @param {Object} config
- * @returns {Promise<{ data: Object|null, error: any }>}
- */
 export const saveAdminConfig = async (config) => {
   localAdminConfig = { ...localAdminConfig, ...config };
+  broadcastSync('ADMIN_CONFIG_UPDATE', config);
 
   const client = getSupabaseClient();
   if (!client) {
@@ -608,107 +550,185 @@ export const saveAdminConfig = async (config) => {
 };
 
 /* =========================================================================
-   6. SUPABASE REALTIME WEBSOCKET SUBSCRIPTION CHANNELS
+   6. DUAL-LAYER REALTIME WEBSOCKET & BROADCAST BUS
    ========================================================================= */
 
-/**
- * Generic Realtime Subscription helper for any Postgres table
- * @param {string} table
- * @param {(payload: any) => void} callback
- * @returns {() => void} Unsubscribe cleanup function
- */
-export const subscribeToTable = (table, callback) => {
-  const client = getSupabaseClient();
-  if (!client) return () => {};
-
-  try {
-    const channel = client
-      .channel(`realtime_${table}_${Math.random().toString(36).substring(2, 9)}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: table },
-        (payload) => {
-          callback(payload);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      client.removeChannel(channel);
-    };
-  } catch (err) {
-    console.warn(`[Supabase Realtime] Error subscribing to table ${table}:`, err.message);
-    return () => {};
-  }
-};
-
-/**
- * Subscribe specifically to Reviews table real-time events
- * @param {(newReview: Review) => void} callback
- * @returns {() => void} Unsubscribe function
- */
-export const subscribeToReviews = (callback) => {
-  return subscribeToTable('reviews', (payload) => {
-    if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
-      localReviewsCache = [payload.new, ...localReviewsCache.filter((r) => r.id !== payload.new.id)];
-      callback(payload.new);
-    }
-  });
-};
-
-/**
- * Subscribe specifically to Orders table real-time events
- * @param {(payload: any) => void} callback
- * @returns {() => void} Unsubscribe function
- */
-export const subscribeToOrders = (callback) => {
-  return subscribeToTable('orders', (payload) => {
-    const raw = payload.new;
-    const formatted = raw
-      ? {
-          ...raw,
-          customerName: raw.customer?.name || raw.customerName || 'Guest Patron',
-          customerPhone: raw.customer?.phone || raw.customerPhone || '',
-          customerEmail: raw.customer?.email || raw.customerEmail || '',
-          tableOrTakeaway: raw.type || raw.tableOrTakeaway || 'Dine-in',
-        }
-      : null;
-
-    if (payload.eventType === 'INSERT' && formatted) {
-      localOrdersCache = [formatted, ...localOrdersCache.filter((o) => o.id !== formatted.id)];
-    } else if (payload.eventType === 'UPDATE' && formatted) {
-      localOrdersCache = localOrdersCache.map((o) => (o.id === formatted.id ? formatted : o));
-    }
-    callback({ ...payload, new: formatted });
-  });
-};
-
-/**
- * Subscribe specifically to Inventory table real-time events
- * @param {(payload: any) => void} callback
- * @returns {() => void} Unsubscribe function
- */
 export const subscribeToInventory = (callback) => {
-  return subscribeToTable('inventory', (payload) => {
-    if (payload.eventType === 'UPDATE' && payload.new) {
-      localInventoryCache = localInventoryCache.map((i) =>
-        String(i.id) === String(payload.new.id) ? { ...i, ...payload.new } : i
-      );
+  let bc = null;
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      bc = new BroadcastChannel('pink_sugar_realtime_bus');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'INVENTORY_UPDATE' && event.data.payload) {
+          callback({ eventType: 'UPDATE', new: event.data.payload });
+        }
+      };
+    } catch (e) {}
+  }
+
+  const client = getSupabaseClient();
+  let channel = null;
+  if (client) {
+    try {
+      channel = client
+        .channel(`realtime_inventory_${Math.random().toString(36).substring(2, 7)}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'inventory' },
+          (payload) => {
+            callback(payload);
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('[Supabase Realtime] Error on inventory channel:', err);
     }
-    callback(payload);
-  });
+  }
+
+  return () => {
+    if (bc) {
+      try {
+        bc.close();
+      } catch (e) {}
+    }
+    if (client && channel) {
+      try {
+        client.removeChannel(channel);
+      } catch (e) {}
+    }
+  };
 };
 
-/**
- * Subscribe specifically to Admin Config table real-time events
- * @param {(newConfig: Object) => void} callback
- * @returns {() => void} Unsubscribe function
- */
-export const subscribeToAdminConfig = (callback) => {
-  return subscribeToTable('admin_config', (payload) => {
-    if (payload.new && payload.new.value) {
-      localAdminConfig = { ...localAdminConfig, ...payload.new.value };
-      callback(payload.new.value);
+export const subscribeToOrders = (callback) => {
+  let bc = null;
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      bc = new BroadcastChannel('pink_sugar_realtime_bus');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'ORDER_CREATE') {
+          callback({ eventType: 'INSERT', new: event.data.payload });
+        } else if (event.data?.type === 'ORDER_UPDATE') {
+          callback({ eventType: 'UPDATE', new: event.data.payload });
+        }
+      };
+    } catch (e) {}
+  }
+
+  const client = getSupabaseClient();
+  let channel = null;
+  if (client) {
+    try {
+      channel = client
+        .channel(`realtime_orders_${Math.random().toString(36).substring(2, 7)}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => {
+            callback(payload);
+          }
+        )
+        .subscribe();
+    } catch (err) {}
+  }
+
+  return () => {
+    if (bc) {
+      try {
+        bc.close();
+      } catch (e) {}
     }
-  });
+    if (client && channel) {
+      try {
+        client.removeChannel(channel);
+      } catch (e) {}
+    }
+  };
+};
+
+export const subscribeToReviews = (callback) => {
+  let bc = null;
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      bc = new BroadcastChannel('pink_sugar_realtime_bus');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'REVIEW_ADD' && event.data.payload) {
+          callback(event.data.payload);
+        }
+      };
+    } catch (e) {}
+  }
+
+  const client = getSupabaseClient();
+  let channel = null;
+  if (client) {
+    try {
+      channel = client
+        .channel(`realtime_reviews_${Math.random().toString(36).substring(2, 7)}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'reviews' },
+          (payload) => {
+            if (payload.new) callback(payload.new);
+          }
+        )
+        .subscribe();
+    } catch (err) {}
+  }
+
+  return () => {
+    if (bc) {
+      try {
+        bc.close();
+      } catch (e) {}
+    }
+    if (client && channel) {
+      try {
+        client.removeChannel(channel);
+      } catch (e) {}
+    }
+  };
+};
+
+export const subscribeToAdminConfig = (callback) => {
+  let bc = null;
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      bc = new BroadcastChannel('pink_sugar_realtime_bus');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'ADMIN_CONFIG_UPDATE' && event.data.payload) {
+          callback(event.data.payload);
+        }
+      };
+    } catch (e) {}
+  }
+
+  const client = getSupabaseClient();
+  let channel = null;
+  if (client) {
+    try {
+      channel = client
+        .channel(`realtime_admin_config_${Math.random().toString(36).substring(2, 7)}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'admin_config' },
+          (payload) => {
+            if (payload.new && payload.new.value) callback(payload.new.value);
+          }
+        )
+        .subscribe();
+    } catch (err) {}
+  }
+
+  return () => {
+    if (bc) {
+      try {
+        bc.close();
+      } catch (e) {}
+    }
+    if (client && channel) {
+      try {
+        client.removeChannel(channel);
+      } catch (e) {}
+    }
+  };
 };
