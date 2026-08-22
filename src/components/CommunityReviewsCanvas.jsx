@@ -6,7 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { Star, Sparkles, MessageSquarePlus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { getReviews } from '../services/dataService';
+import { getReviews, subscribeToReviews } from '../services/dataService';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -17,9 +17,10 @@ export const CommunityReviewsCanvas = () => {
   const [hoveredId, setHoveredId] = useState(null);
   const { setIsReviewOpen } = useCart();
 
-  // Load reviews from abstracted data service layer on mount
+  // Load reviews on mount and subscribe to Realtime WebSocket updates
   useEffect(() => {
     let isMounted = true;
+
     const fetchReviews = async () => {
       const res = await getReviews();
       if (isMounted && res.data) {
@@ -27,8 +28,17 @@ export const CommunityReviewsCanvas = () => {
       }
     };
     fetchReviews();
+
+    // Live Realtime WebSocket subscription
+    const unsubscribe = subscribeToReviews((newReview) => {
+      if (isMounted && newReview) {
+        setReviews((prev) => [newReview, ...prev.filter((r) => r.id !== newReview.id)]);
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, []);
 

@@ -9,6 +9,9 @@ import {
   getCustomers,
   getAdminConfig,
   saveAdminConfig as saveAdminConfigService,
+  subscribeToOrders,
+  subscribeToInventory,
+  subscribeToAdminConfig,
 } from '../services/dataService';
 
 const AdminContext = createContext();
@@ -20,6 +23,7 @@ export const AdminProvider = ({ children }) => {
   const [customers, setCustomers] = useState([]);
   const [adminConfig, setAdminConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRealtimeActive, setIsRealtimeActive] = useState(false);
 
   // Toast System for Admin
   const [toastMessage, setToastMessage] = useState(null);
@@ -53,8 +57,46 @@ export const AdminProvider = ({ children }) => {
     }
   }, []);
 
+  // Initial Load + Realtime WebSockets Channel Subscriptions
   useEffect(() => {
     fetchData();
+
+    // 1. Subscribe to Live Orders Channel
+    const unsubscribeOrders = subscribeToOrders((payload) => {
+      setIsRealtimeActive(true);
+      if (payload.eventType === 'INSERT' && payload.new) {
+        setOrders((prev) => [payload.new, ...prev.filter((o) => o.id !== payload.new.id)]);
+        showAdminToast(`🔔 New Live Order received: #${payload.new.id}`);
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === payload.new.id ? { ...o, ...payload.new } : o))
+        );
+      }
+    });
+
+    // 2. Subscribe to Live Inventory Channel
+    const unsubscribeInventory = subscribeToInventory((payload) => {
+      setIsRealtimeActive(true);
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        setInventory((prev) =>
+          prev.map((i) => (i.id === payload.new.id ? { ...i, ...payload.new } : i))
+        );
+        showAdminToast(`⚡ Menu inventory synced: ${payload.new.name || 'Item'}`);
+      }
+    });
+
+    // 3. Subscribe to Store Operations Config Channel
+    const unsubscribeConfig = subscribeToAdminConfig((newConfig) => {
+      setIsRealtimeActive(true);
+      setAdminConfig((prev) => ({ ...prev, ...newConfig }));
+      showAdminToast('⚙️ Store operational configuration updated live');
+    });
+
+    return () => {
+      unsubscribeOrders();
+      unsubscribeInventory();
+      unsubscribeConfig();
+    };
   }, [fetchData]);
 
   // Move Order to Next Pipeline Stage via Data Service
@@ -74,7 +116,7 @@ export const AdminProvider = ({ children }) => {
 
     showAdminToast(`Order ${orderId} moved to ${nextStatus.toUpperCase()}`);
 
-    // Persist to service layer
+    // Persist to Supabase service layer
     await advanceOrderStatusService(orderId, nextStatus);
   };
 
@@ -92,7 +134,7 @@ export const AdminProvider = ({ children }) => {
 
     showAdminToast(`${item.name} marked as ${nextState ? 'IN STOCK' : 'SOLD OUT'}`);
 
-    // Persist to service layer
+    // Persist to Supabase service layer
     await updateInventoryItem(itemId, { inStock: nextState });
   };
 
@@ -110,7 +152,7 @@ export const AdminProvider = ({ children }) => {
 
     showAdminToast(`${item.name} ${nextState ? 'pinned to Daily Specials' : 'unpinned'}`);
 
-    // Persist to service layer
+    // Persist to Supabase service layer
     await updateInventoryItem(itemId, { isSpecial: nextState });
   };
 
@@ -126,7 +168,7 @@ export const AdminProvider = ({ children }) => {
 
     showAdminToast(`Price updated to ₹${numPrice}`);
 
-    // Persist to service layer
+    // Persist to Supabase service layer
     await updateInventoryItem(itemId, { price: numPrice });
   };
 
@@ -145,6 +187,7 @@ export const AdminProvider = ({ children }) => {
         customers,
         adminConfig,
         isLoading,
+        isRealtimeActive,
         advanceOrderStatus,
         toggleItemStock,
         toggleItemSpecial,

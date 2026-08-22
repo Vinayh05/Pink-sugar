@@ -3,6 +3,7 @@
  * @description Dedicated Data Layer Abstraction for Pink Sugar Cafe.
  * Exposes clean, typed asynchronous helper functions to read and write to Supabase
  * with seamless fallback to local mock data to prevent UI crashes.
+ * Includes Supabase Realtime WebSocket subscription handlers for instant cross-device sync.
  */
 
 import { getSupabaseClient } from '../lib/supabaseClient';
@@ -506,4 +507,99 @@ export const saveAdminConfig = async (config) => {
   } catch (err) {
     return { data: localAdminConfig, error: err.message };
   }
+};
+
+/* =========================================================================
+   6. SUPABASE REALTIME WEBSOCKET SUBSCRIPTION CHANNELS
+   ========================================================================= */
+
+/**
+ * Generic Realtime Subscription helper for any Postgres table
+ * @param {string} table
+ * @param {(payload: any) => void} callback
+ * @returns {() => void} Unsubscribe cleanup function
+ */
+export const subscribeToTable = (table, callback) => {
+  const client = getSupabaseClient();
+  if (!client) return () => {};
+
+  try {
+    const channel = client
+      .channel(`realtime_${table}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: table },
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  } catch (err) {
+    console.warn(`[Supabase Realtime] Error subscribing to table ${table}:`, err.message);
+    return () => {};
+  }
+};
+
+/**
+ * Subscribe specifically to Reviews table real-time events
+ * @param {(newReview: Review) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export const subscribeToReviews = (callback) => {
+  return subscribeToTable('reviews', (payload) => {
+    if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
+      localReviewsCache = [payload.new, ...localReviewsCache.filter((r) => r.id !== payload.new.id)];
+      callback(payload.new);
+    }
+  });
+};
+
+/**
+ * Subscribe specifically to Orders table real-time events
+ * @param {(payload: any) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export const subscribeToOrders = (callback) => {
+  return subscribeToTable('orders', (payload) => {
+    if (payload.eventType === 'INSERT' && payload.new) {
+      localOrdersCache = [payload.new, ...localOrdersCache.filter((o) => o.id !== payload.new.id)];
+    } else if (payload.eventType === 'UPDATE' && payload.new) {
+      localOrdersCache = localOrdersCache.map((o) => (o.id === payload.new.id ? payload.new : o));
+    }
+    callback(payload);
+  });
+};
+
+/**
+ * Subscribe specifically to Inventory table real-time events
+ * @param {(payload: any) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export const subscribeToInventory = (callback) => {
+  return subscribeToTable('inventory', (payload) => {
+    if (payload.eventType === 'UPDATE' && payload.new) {
+      localInventoryCache = localInventoryCache.map((i) =>
+        i.id === payload.new.id ? { ...i, ...payload.new } : i
+      );
+    }
+    callback(payload);
+  });
+};
+
+/**
+ * Subscribe specifically to Admin Config table real-time events
+ * @param {(newConfig: Object) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export const subscribeToAdminConfig = (callback) => {
+  return subscribeToTable('admin_config', (payload) => {
+    if (payload.new && payload.new.value) {
+      localAdminConfig = { ...localAdminConfig, ...payload.new.value };
+      callback(payload.new.value);
+    }
+  });
 };
