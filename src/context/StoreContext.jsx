@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   getInventory,
-  updateInventoryItem as updateInventoryItemService,
+  updateInventoryItem,
   getOrders,
   createOrder as createOrderService,
   advanceOrderStatus as advanceOrderStatusService,
